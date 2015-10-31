@@ -1,6 +1,8 @@
 # ARDDUDE_DIR is defined by eclipse CDT config
 $(info ARDDUDE_DIR=${ARDDUDE_DIR})
 
+#ARD_CONSOLE_FLAGS := --debug
+
 all: bin
 
 include ${ARDDUDE_DIR}/etc/tools.mk
@@ -20,10 +22,15 @@ endif
 
 include ${ARDDUDE_DIR}/etc/main.mk
 
+INCLUDE_FLAGS_EXTRA += -I.
+
+#ARD_LIBS_DIR := $(call truepath,../ArduinoLibs)
+#INCLUDE_FLAGS_EXTRA += -I${ARD_LIBS_DIR}
+#LDFLAGS_EXTRA += -L${ARD_LIBS_DIR}/target/${TARGET_BOARD} -lArduinoLibs
+
 ARD_TOOLS_DIR := $(call truepath,../ArduinoTools)
-#LIBRARIES_DIRS := ${ARD_TOOLS_DIR}
-INCLUDE_FLAGS_EXTRA += $(addprefix -I,${ARD_TOOLS_DIR} .)
-LDFLAGS_EXTRA += -L${ARD_TOOLS_DIR}/target/${TARGET} -lArduinoTools
+INCLUDE_FLAGS_EXTRA += -I${ARD_TOOLS_DIR}
+LDFLAGS_EXTRA += -L${ARD_TOOLS_DIR}/target/${TARGET_BOARD} -lArduinoTools
 
 ## exemples :
 # make SOURCE_DIRS=alternate
