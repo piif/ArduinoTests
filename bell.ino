@@ -42,12 +42,12 @@
 
 #define BUTTON 2
 #ifdef __AVR_ATtinyX5__
-#define BELL_FREQ PWM_1_A
+#define OUT_FREQ PWM_1_A
 // ATTiny : D2 = Pin 6
 #define BELL_VOL PWM_0_A
 // ATTiny : D1 = Pin 5
 #else
-#define BELL_FREQ PWM_1_B
+#define OUT_FREQ PWM_1_B
 // Uno : D10
 #define BELL_VOL 13
 // Uno : Ground.
@@ -139,9 +139,9 @@ ISR(INT0_vect) {
 
 void setup() {
 	pinMode(BUTTON, INPUT_PULLUP);
-	pinMode(BELL_FREQ, OUTPUT);
+	pinMode(OUT_FREQ, OUTPUT);
 	pinMode(BELL_VOL, OUTPUT);
-	digitalWrite(BELL_FREQ, LOW);
+	digitalWrite(OUT_FREQ, LOW);
 	digitalWrite(BELL_VOL, LOW);
 
 ////	OCR0A = 128;
