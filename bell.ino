@@ -57,7 +57,9 @@ const struct _sample {
 	// Big Ben
 	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
 	// Hedwge theme
-	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>b" }
+	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>b" },
+	// PopCorn
+	{ 480, "+b +a +b +F +d +F b   +b +a +b +F +d +F b" }
 };
 
 #define NB_SAMPLES (sizeof(samples) / sizeof(struct _sample))

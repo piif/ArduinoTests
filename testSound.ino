@@ -58,7 +58,9 @@ struct sample {
 	// Big Ben
 	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
 	// Hedwge theme
-	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" }
+	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" },
+	// PopCorn
+	{ 480, "+b +a +b +F +d +F b   +b +a +b +F +d +F b" }
 };
 
 int frequency = 440, volume = 100, tempo = 120;
