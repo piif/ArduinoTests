@@ -6,6 +6,7 @@
 	#include "ArduinoTools.h"
 	#include "pwm/pwm.h"
 	#include "serialInput/serialInput.h"
+	#include "arduino-toneac/toneAC.h"
 #else
 	#include "ArduinoTools.h"
 	#include "pwm.h"
@@ -15,9 +16,10 @@
 	#define DEFAULT_BAUDRATE 115200
 #endif
 
-#define OUT_FREQ PWM_2_B
+#define OUT_FREQ_1 PWM_1_A
+#define OUT_FREQ_2 PWM_1_B
 // Uno : PWM_1_B = D10, PWM_2_B = D3
-#define FREQUENCY_PWM  2
+#define FREQUENCY_PWM  1
 #define REGISTER_VOLUME_TOP OCR2B
 
 //const int noteFreqs[] = {
@@ -60,7 +62,9 @@ struct sample {
 	// Hedwge theme
 	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" },
 	// PopCorn
-	{ 480, "+b +a +b +F +d +F b   +b +a +b +F +d +F b" }
+	{ 480, "+b +a +b +F +d +F b   +b +a +b +F +d +F b" },
+	// Imperial March
+	{ 240, "___g___g___g__eb___g__eb___g>_g" }
 };
 
 int frequency = 440, volume = 100, tempo = 120;
@@ -82,31 +86,59 @@ void play() {
 	Serial.print("volume : "); Serial.println(volume);
 	Serial.print("volumeTop : "); Serial.println(volumeTop);
 
-	setPWM(FREQUENCY_PWM, 0,
-			COMPARE_OUTPUT_MODE_NONE, top,
-			COMPARE_OUTPUT_MODE_NORMAL, volumeTop,
-			WGM_3_FAST_OCRA, prescale);
+	setPWM(FREQUENCY_PWM, top,
+			2, volumeTop,
+			3, top - volumeTop,
+			14, prescale);
+
+//	setPWM(FREQUENCY_PWM, 0,
+//			COMPARE_OUTPUT_MODE_NONE, top,
+//			COMPARE_OUTPUT_MODE_NORMAL, volumeTop,
+//			WGM_2_FAST_OCRA, prescale);
 }
 
 void play(int duration, short effect) {
+//	if (effect == 0) {
+//		toneAC(frequency, volume, duration, false);
+//	} else {
+//		unsigned long v, step, delta;
+//		if (effect == -1) {
+//			v = 10;
+//			step = 10;
+//			delta = -1;
+//		} else {
+//			v = 0;
+//			step = 10;
+//			delta = 1;
+//		}
+//		duration /= step;
+//		while(step --) {
+//			toneAC(frequency, v, duration, false);
+//			v += delta;
+//		}
+//	}
+//    return;
+
 	unsigned long compFrequency = frequency;
 	word top, prescale;
 	computePWM(FREQUENCY_PWM, compFrequency, prescale, top);
 
-	setPWM(FREQUENCY_PWM, 0,
-			COMPARE_OUTPUT_MODE_NONE, top,
-			COMPARE_OUTPUT_MODE_NORMAL, 0,
-			WGM_3_FAST_OCRA, prescale);
+	setPWM(FREQUENCY_PWM, top,
+			2, 0,
+			3, 0,
+			14, prescale);
 
 	if (effect == 0) {
-		REGISTER_VOLUME_TOP = (long)top * volume / 200;
+		unsigned long volumeTop = (long)top * volume / 200;
+		OCR1A = volumeTop;
+		OCR1B = top - volumeTop;
 		delay(duration);
 	} else {
 		unsigned long v, step, delta;
 		if (effect == -1) {
 			v = 100;
-			step = 25;
-			delta = -4;
+			step = 10;
+			delta = -5;
 		} else {
 			v = 0;
 			step = 25;
@@ -115,7 +147,9 @@ void play(int duration, short effect) {
 		duration /= step;
 
 		while(step --) {
-			REGISTER_VOLUME_TOP = (long)top * v / 200;
+			unsigned long volumeTop = (long)top * v / 200;
+			OCR1A = volumeTop;
+			OCR1B = top - volumeTop;
 			delay(duration);
 			v += delta;
 		}
@@ -224,8 +258,10 @@ void help() {
 
 void setup() {
 	Serial.begin(DEFAULT_BAUDRATE);
-	pinMode(OUT_FREQ, OUTPUT);
-	digitalWrite(OUT_FREQ, LOW);
+	pinMode(OUT_FREQ_1, OUTPUT);
+	pinMode(OUT_FREQ_2, OUTPUT);
+	digitalWrite(OUT_FREQ_1, LOW);
+	digitalWrite(OUT_FREQ_2, LOW);
 
 	registerInput(sizeof(inputs), inputs);
 	help();
