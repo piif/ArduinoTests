@@ -6,7 +6,7 @@
 	#include "ArduinoTools.h"
 	#include "pwm/pwm.h"
 	#include "serialInput/serialInput.h"
-	#include "arduino-toneac/toneAC.h"
+//	#include "arduino-toneac/toneAC.h"
 #else
 	#include "ArduinoTools.h"
 	#include "pwm.h"
@@ -17,10 +17,11 @@
 #endif
 
 #define OUT_FREQ_1 PWM_1_A
-#define OUT_FREQ_2 PWM_1_B
+#define OUT_FREQ_2 PWM_2_B
 // Uno : PWM_1_B = D10, PWM_2_B = D3
 #define FREQUENCY_PWM  1
-#define REGISTER_VOLUME_TOP OCR2B
+#define VOLUME_PWM 2
+#define VOLUME_MAX 100
 
 //const int noteFreqs[] = {
 ////   C    C#   D    D#   E    F    F#   G    G#   A    A#   B
@@ -62,12 +63,13 @@ struct sample {
 	// Hedwge theme
 	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" },
 	// PopCorn
-	{ 480, "+b +a +b +F +d +F b   +b +a +b +F +d +F b" },
+	{ 480, ">+b >+a >+b >+F >+d >+F >b   >+b >+a >+b >+F >+d >+F >b" },
 	// Imperial March
-	{ 240, "___g___g___g__eb___g__eb___g>_g" }
+	{ 400, "__g>g__g>g__g>g_e>eb__g>g_e>eb__g>g" }
 };
 
 int frequency = 440, volume = 100, tempo = 120;
+volatile int currentVolume = volume;
 boolean soundOn = false;
 
 void play() {
@@ -87,74 +89,44 @@ void play() {
 	Serial.print("volumeTop : "); Serial.println(volumeTop);
 
 	setPWM(FREQUENCY_PWM, top,
-			2, volumeTop,
-			3, top - volumeTop,
-			14, prescale);
-
-//	setPWM(FREQUENCY_PWM, 0,
-//			COMPARE_OUTPUT_MODE_NONE, top,
-//			COMPARE_OUTPUT_MODE_NORMAL, volumeTop,
-//			WGM_2_FAST_OCRA, prescale);
+			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
+			COMPARE_OUTPUT_MODE_NONE, 0,
+			WGM_1_FAST_ICR, prescale);
+	currentVolume = volume;
 }
 
 void play(int duration, short effect) {
-//	if (effect == 0) {
-//		toneAC(frequency, volume, duration, false);
-//	} else {
-//		unsigned long v, step, delta;
-//		if (effect == -1) {
-//			v = 10;
-//			step = 10;
-//			delta = -1;
-//		} else {
-//			v = 0;
-//			step = 10;
-//			delta = 1;
-//		}
-//		duration /= step;
-//		while(step --) {
-//			toneAC(frequency, v, duration, false);
-//			v += delta;
-//		}
-//	}
-//    return;
 
 	unsigned long compFrequency = frequency;
 	word top, prescale;
 	computePWM(FREQUENCY_PWM, compFrequency, prescale, top);
 
 	setPWM(FREQUENCY_PWM, top,
-			2, 0,
-			3, 0,
-			14, prescale);
+			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
+			COMPARE_OUTPUT_MODE_NONE, 0,
+			WGM_1_FAST_ICR, prescale);
 
 	if (effect == 0) {
-		unsigned long volumeTop = (long)top * volume / 200;
-		OCR1A = volumeTop;
-		OCR1B = top - volumeTop;
+		currentVolume = volume;
 		delay(duration);
 	} else {
-		unsigned long v, step, delta;
+		byte step, delta;
 		if (effect == -1) {
-			v = 100;
-			step = 10;
-			delta = -5;
+			currentVolume = VOLUME_MAX;
+			step = 20;
+			delta = -VOLUME_MAX / step;
 		} else {
-			v = 0;
-			step = 25;
-			delta = 4;
+			currentVolume = 0;
+			step = 10;
+			delta = VOLUME_MAX / step;
 		}
 		duration /= step;
 
 		while(step --) {
-			unsigned long volumeTop = (long)top * v / 200;
-			OCR1A = volumeTop;
-			OCR1B = top - volumeTop;
+			currentVolume += delta;
 			delay(duration);
-			v += delta;
 		}
 	}
-
 }
 
 void mute() {
@@ -162,6 +134,7 @@ void mute() {
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		0, 0);
+	currentVolume = 0;
 }
 
 void playNotes(char *notes) {
@@ -256,12 +229,33 @@ void help() {
 	Serial.println("0 (zero) sound off");
 }
 
+ISR(TIMER1_COMPA_vect) {
+	OCR2A = 0;
+	OCR2B = 0;
+}
+ISR(TIMER1_OVF_vect) {
+	OCR2A = VOLUME_MAX;
+	OCR2B = VOLUME_MAX - currentVolume;
+}
+//volatile long ticks;
+//ISR(TIMER0_OVF_vect) {
+//	ticks++;
+//}
+
 void setup() {
 	Serial.begin(DEFAULT_BAUDRATE);
 	pinMode(OUT_FREQ_1, OUTPUT);
 	pinMode(OUT_FREQ_2, OUTPUT);
 	digitalWrite(OUT_FREQ_1, LOW);
 	digitalWrite(OUT_FREQ_2, LOW);
+
+	setPWM(VOLUME_PWM, 0,
+			COMPARE_OUTPUT_MODE_NONE, 0,
+			COMPARE_OUTPUT_MODE_NORMAL, 0,
+			WGM_2_FAST_OCRA, PWM2_PRESCALER_1);
+
+	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
+//	TIMSK0 = (1<<TOIE0);
 
 	registerInput(sizeof(inputs), inputs);
 	help();
