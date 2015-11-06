@@ -1,3 +1,9 @@
+
+// TODO :
+// - faire marcher la sonnette en Uno sur timer 2
+// - idem sur timer 0 => manips sur delay (comment surcharger TIMER0_OVF ?)
+// - ensuite sur tiny
+
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
 //	#include <avr/wdt.h>
@@ -9,21 +15,29 @@
 	#include "pwm.h"
 #endif
 
+
 #ifdef __AVR_ATtinyX5__
 	#define FREQUENCY_PWM  1
-	#define OUT_FREQ PWM_1_A
-	// ATTiny : D1 = Pin 6
-	#define REGISTER_VOLUME_TOP OCR1A
+	#define VOLUME_PWM 0
+	#define OUT_FREQ ??
+	// ATTiny : ?? D1 = Pin 6
+	#define OUT_VOLUME ??
+	// ATTiny : ??
 	#define LED 0
 	#define BUTTON 2
 #else
-	#define FREQUENCY_PWM  2
-	#define OUT_FREQ PWM_2_B
+	#define FREQUENCY_PWM  1
+	#define VOLUME_PWM 2
+	#define OUT_FREQ PWM_1_B
+	// Uno : D10
+	#define OUT_VOLUME PWM_2_B
 	// Uno : D3
 	#define REGISTER_VOLUME_TOP OCR2B
-	#define LED 4
+	#define LED 13
 	#define BUTTON 2
 #endif
+
+#define VOLUME_MAX 100
 
 int freqForNote(char name, short octave) {
 	int f = 0;
@@ -57,14 +71,16 @@ const struct _sample {
 	// Big Ben
 	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
 	// Hedwge theme
-	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>b" },
+	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" },
 	// PopCorn
-	{ 480, "+b +a +b +F +d +F b   +b +a +b +F +d +F b" }
+	{ 480, ">+b >+a >+b >+F >+d >+F >b   >+b >+a >+b >+F >+d >+F >b" },
+	// Imperial March
+	{ 400, "__g>g__g>g__g>g_e>eb__g>g_e>eb__g>g" }
 };
-
 #define NB_SAMPLES (sizeof(samples) / sizeof(struct _sample))
 
 int frequency = 440, tempo = 120;
+volatile int currentVolume = 0;
 
 void play(int frequency, int duration, short effect) {
 //	wdt_reset();
@@ -80,30 +96,29 @@ void play(int frequency, int duration, short effect) {
 #else
 	setPWM(FREQUENCY_PWM, 0,
 			COMPARE_OUTPUT_MODE_NONE, top,
-			COMPARE_OUTPUT_MODE_NORMAL, 0,
-			WGM_3_FAST_OCRA, prescale);
+			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
+			WGM_1_FAST_OCRA, prescale);
 #endif
 
 	if (effect == 0) {
-		REGISTER_VOLUME_TOP = top / 2;
+		currentVolume = VOLUME_MAX;
 		delay(duration);
 	} else {
-		byte v, step, delta;
+		byte step, delta;
 		if (effect == -1) {
-			v = 100;
-			step = 25;
-			delta = -4;
+			currentVolume = VOLUME_MAX;
+			step = 20;
+			delta = -VOLUME_MAX / step;
 		} else {
-			v = 0;
-			step = 25;
-			delta = 4;
+			currentVolume = 0;
+			step = 10;
+			delta = VOLUME_MAX / step;
 		}
 		duration /= step;
 
 		while(step --) {
-			REGISTER_VOLUME_TOP = (int)top * v / 200;
+			currentVolume += delta;
 			delay(duration);
-			v += delta;
 		}
 	}
 
@@ -121,6 +136,7 @@ void mute() {
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		0, 0);
 #endif
+	currentVolume = 0;
 }
 
 void playNotes(char *notes) {
@@ -170,19 +186,53 @@ void toggleLed() {
 	led = !led;
 }
 
+// stop volume pwm when frequency pwm is low
+#ifdef __AVR_ATtinyX5__
+ISR(TIMER1_COMPA_vect) {
+#else
+ISR(TIMER1_COMPB_vect) {
+#endif
+	OCR2A = 0;
+	OCR2B = 0;
+}
+// launch volume pwm when frequency pwm is high
+#ifdef __AVR_ATtinyX5__
+ISR(TIMER1_OVF_vect) {
+#else
+ISR(TIMER1_COMPA_vect) {
+#endif
+	OCR2A = VOLUME_MAX;
+	OCR2B = VOLUME_MAX - currentVolume;
+}
+//volatile long ticks;
+//ISR(TIMER0_OVF_vect) {
+//	ticks++;
+//}
+
 ISR(INT0_vect) {}
 
 void setup() {
 	pinMode(BUTTON, INPUT_PULLUP);
-	pinMode(OUT_FREQ, OUTPUT);
 	pinMode(LED, OUTPUT);
+	pinMode(OUT_FREQ, OUTPUT);
 	digitalWrite(OUT_FREQ, LOW);
+	pinMode(OUT_VOLUME, OUTPUT);
+	digitalWrite(OUT_VOLUME, LOW);
+
+	mute();
 
 	ADCSRA &= ~(1<<ADEN);				//turn off ADC
 	ACSR |= _BV(ACD);					//disable the analog comparator
 	MCUCR |= _BV(BODS) | _BV(BODSE);	//turn off the brown-out detector
 
 //	wdt_enable(7);
+
+#ifdef __AVR_ATtinyX5__
+	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
+#else
+	TIMSK1 = (1<<OCIE1A) | (1<<OCIE1B);
+#endif
+//	TIMSK0 = (1<<TOIE0);
 
 	toggleLed();
 	delay(2000);
@@ -201,7 +251,11 @@ void loop() {
 //	WDTCR = (1<<WDP2) | (1<<WDP1) | (1<<WDP0) | (1<<WDE);
 
 	// disable timers
+#if defined PRUSI
 	PRR = PRTIM0 | PRTIM1 | PRUSI | PRADC;
+#else
+	PRR = PRTIM0 | PRTIM1 | PRADC;
+#endif
 
 	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
 
@@ -219,7 +273,11 @@ void loop() {
 	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
 
 	// enable timers (needed for sound an delay())
+#if defined PRUSI
 	PRR = PRUSI | PRADC;
+#else
+	PRR = PRADC;
+#endif
 
 	// do the job
 	toggleLed();

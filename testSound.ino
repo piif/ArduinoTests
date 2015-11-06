@@ -1,6 +1,3 @@
-/**
- */
-
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
 	#include "ArduinoTools.h"
