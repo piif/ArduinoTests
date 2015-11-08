@@ -5,7 +5,6 @@
 // - ensuite sur tiny
 
 #include <Arduino.h>
-#include "registers.h"
 #include "ArduinoTools.h"
 #include "pwm/pwm.h"
 
@@ -62,10 +61,10 @@ const struct _sample {
 	char *score;
 } samples[] = {
 	// test
-	{ 120, "a >a a >a" },
+	{ 60, ">a" },
 	// Big Ben
 	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
-	// Hedwge theme
+	// Hedwige theme
 	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" },
 	// PopCorn
 	{ 480, ">+b >+a >+b >+F >+d >+F >b   >+b >+a >+b >+F >+d >+F >b" },
@@ -75,7 +74,7 @@ const struct _sample {
 #define NB_SAMPLES (sizeof(samples) / sizeof(struct _sample))
 
 int frequency = 440, tempo = 120;
-volatile int currentVolume = 0;
+volatile int currentVolume = VOLUME_MAX;
 
 void play(int frequency, int duration, short effect) {
 //	wdt_reset();
@@ -93,19 +92,17 @@ void play(int frequency, int duration, short effect) {
 			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
 			COMPARE_OUTPUT_MODE_NONE, 0,
 			WGM_1_FAST_ICR, prescale);
-//	registers->icr1 = top;
-//	registers->ocr1a = top / 2;
-//	registers->com1a = COMPARE_OUTPUT_MODE_NORMAL;
-//	registers->com1b = COMPARE_OUTPUT_MODE_NONE;
-//	SET_WGM(FREQUENCY_PWM, WGM_1_FAST_ICR);
-//	registers->cs1 = prescale;
 #endif
+
+//	Serial.print("f ");Serial.print(frequency);
+//	Serial.print("e ");Serial.println(effect);
 
 	if (effect == 0) {
 		currentVolume = VOLUME_MAX;
 		delay(duration);
 	} else {
-		byte step, delta;
+		byte step;
+		short delta;
 		if (effect == -1) {
 			currentVolume = VOLUME_MAX;
 			step = 20;
@@ -119,6 +116,7 @@ void play(int frequency, int duration, short effect) {
 
 		while(step --) {
 			currentVolume += delta;
+//			Serial.print("v ");Serial.println(currentVolume);
 			delay(duration);
 		}
 	}
@@ -132,6 +130,7 @@ void mute() {
 			0, 0);
 #else
 //	registers->cs1 = 0;
+//	registers->cs2 = 0;
 	setPWM(FREQUENCY_PWM, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
@@ -195,21 +194,13 @@ ISR(TIMER1_COMPA_vect) {
 #endif
 	OCR2A = 0;
 	OCR2B = 0;
-//	registers->cs2 = 0;
-//	registers->ocr2a = 0;
-//	registers->ocr2b = 0;
+//	TCCR2B &= ~0x07; // CS2 = 0
 }
 // launch volume pwm when frequency pwm is high
-#ifdef __AVR_ATtinyX5__
 ISR(TIMER1_OVF_vect) {
-#else
-ISR(TIMER1_OVF_vect) {
-#endif
 	OCR2A = VOLUME_MAX;
 	OCR2B = VOLUME_MAX - currentVolume;
-//	registers->cs2 = PWM2_PRESCALER_8;
-//	registers->ocr2a = VOLUME_MAX;
-//	registers->ocr2b = VOLUME_MAX - currentVolume;
+//	TCCR2B |= PWM2_PRESCALER_8; // CS2 = PWM2_PRESCALER_8
 }
 //volatile long ticks;
 //ISR(TIMER0_OVF_vect) {
@@ -219,6 +210,7 @@ ISR(TIMER1_OVF_vect) {
 ISR(INT0_vect) {}
 
 void setup() {
+	Serial.begin(115200);
 	pinMode(BUTTON, INPUT_PULLUP);
 	pinMode(LED, OUTPUT);
 	pinMode(OUT_FREQ, OUTPUT);
@@ -227,6 +219,11 @@ void setup() {
 	digitalWrite(OUT_VOLUME, LOW);
 
 	mute();
+
+	setPWM(FREQUENCY_PWM, 0,
+			COMPARE_OUTPUT_MODE_NORMAL, 0,
+			COMPARE_OUTPUT_MODE_NONE, 0,
+			WGM_1_FAST_ICR, 0);
 
 	setPWM(VOLUME_PWM, 0,
 			COMPARE_OUTPUT_MODE_NONE, 0,
@@ -247,7 +244,7 @@ void setup() {
 //	TIMSK0 = (1<<TOIE0);
 
 	toggleLed();
-	delay(2000);
+	delay(1000);
 	toggleLed();
 }
 
@@ -269,8 +266,7 @@ void loop() {
 	PRR = PRTIM0 | PRTIM1 | PRADC;
 #endif
 
-//	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
-	registers->INTERRUPT_NAME_FOR_PIN(BUTTON) = 1;
+	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
 
 	// wait ...
 	sleepNow(SLEEP_MODE_PWR_DOWN);
@@ -283,8 +279,7 @@ void loop() {
 //	WDTCR = 0;
 
 	// disable interrupt to avoid repeated calls
-//	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
-	registers->INTERRUPT_NAME_FOR_PIN(BUTTON) = 0;
+	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
 
 	// enable timers (needed for sound an delay())
 #if defined PRUSI
