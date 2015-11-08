@@ -4,17 +4,10 @@
 // - idem sur timer 0 => manips sur delay (comment surcharger TIMER0_OVF ?)
 // - ensuite sur tiny
 
-#ifdef PIF_TOOL_CHAIN
-	#include <Arduino.h>
-//	#include <avr/wdt.h>
-	#include "ArduinoTools.h"
-	#include "pwm/pwm.h"
-//	#include <avr/pgmspace.h>
-#else
-	#include "ArduinoTools.h"
-	#include "pwm.h"
-#endif
-
+#include <Arduino.h>
+#include "registers.h"
+#include "ArduinoTools.h"
+#include "pwm/pwm.h"
 
 #ifdef __AVR_ATtinyX5__
 	#define FREQUENCY_PWM  1
@@ -28,8 +21,8 @@
 #else
 	#define FREQUENCY_PWM  1
 	#define VOLUME_PWM 2
-	#define OUT_FREQ PWM_1_B
-	// Uno : D10
+	#define OUT_FREQ PWM_1_A
+	// Uno : D9
 	#define OUT_VOLUME PWM_2_B
 	// Uno : D3
 	#define REGISTER_VOLUME_TOP OCR2B
@@ -37,7 +30,7 @@
 	#define BUTTON 2
 #endif
 
-#define VOLUME_MAX 100
+#define VOLUME_MAX 20
 
 int freqForNote(char name, short octave) {
 	int f = 0;
@@ -68,6 +61,8 @@ const struct _sample {
 	int tempo;
 	char *score;
 } samples[] = {
+	// test
+	{ 120, "a >a a >a" },
 	// Big Ben
 	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
 	// Hedwge theme
@@ -94,10 +89,16 @@ void play(int frequency, int duration, short effect) {
 			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
 			SET_PWM_1_A, prescale);
 #else
-	setPWM(FREQUENCY_PWM, 0,
-			COMPARE_OUTPUT_MODE_NONE, top,
+	setPWM(FREQUENCY_PWM, top,
 			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
-			WGM_1_FAST_OCRA, prescale);
+			COMPARE_OUTPUT_MODE_NONE, 0,
+			WGM_1_FAST_ICR, prescale);
+//	registers->icr1 = top;
+//	registers->ocr1a = top / 2;
+//	registers->com1a = COMPARE_OUTPUT_MODE_NORMAL;
+//	registers->com1b = COMPARE_OUTPUT_MODE_NONE;
+//	SET_WGM(FREQUENCY_PWM, WGM_1_FAST_ICR);
+//	registers->cs1 = prescale;
 #endif
 
 	if (effect == 0) {
@@ -121,7 +122,6 @@ void play(int frequency, int duration, short effect) {
 			delay(duration);
 		}
 	}
-
 }
 
 void mute() {
@@ -131,6 +131,7 @@ void mute() {
 			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
 			0, 0);
 #else
+//	registers->cs1 = 0;
 	setPWM(FREQUENCY_PWM, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
@@ -190,19 +191,25 @@ void toggleLed() {
 #ifdef __AVR_ATtinyX5__
 ISR(TIMER1_COMPA_vect) {
 #else
-ISR(TIMER1_COMPB_vect) {
+ISR(TIMER1_COMPA_vect) {
 #endif
 	OCR2A = 0;
 	OCR2B = 0;
+//	registers->cs2 = 0;
+//	registers->ocr2a = 0;
+//	registers->ocr2b = 0;
 }
 // launch volume pwm when frequency pwm is high
 #ifdef __AVR_ATtinyX5__
 ISR(TIMER1_OVF_vect) {
 #else
-ISR(TIMER1_COMPA_vect) {
+ISR(TIMER1_OVF_vect) {
 #endif
 	OCR2A = VOLUME_MAX;
 	OCR2B = VOLUME_MAX - currentVolume;
+//	registers->cs2 = PWM2_PRESCALER_8;
+//	registers->ocr2a = VOLUME_MAX;
+//	registers->ocr2b = VOLUME_MAX - currentVolume;
 }
 //volatile long ticks;
 //ISR(TIMER0_OVF_vect) {
@@ -221,6 +228,11 @@ void setup() {
 
 	mute();
 
+	setPWM(VOLUME_PWM, 0,
+			COMPARE_OUTPUT_MODE_NONE, 0,
+			COMPARE_OUTPUT_MODE_NORMAL, 0,
+			WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
+
 	ADCSRA &= ~(1<<ADEN);				//turn off ADC
 	ACSR |= _BV(ACD);					//disable the analog comparator
 	MCUCR |= _BV(BODS) | _BV(BODSE);	//turn off the brown-out detector
@@ -230,7 +242,7 @@ void setup() {
 #ifdef __AVR_ATtinyX5__
 	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
 #else
-	TIMSK1 = (1<<OCIE1A) | (1<<OCIE1B);
+	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
 #endif
 //	TIMSK0 = (1<<TOIE0);
 
@@ -257,7 +269,8 @@ void loop() {
 	PRR = PRTIM0 | PRTIM1 | PRADC;
 #endif
 
-	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
+//	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
+	registers->INTERRUPT_NAME_FOR_PIN(BUTTON) = 1;
 
 	// wait ...
 	sleepNow(SLEEP_MODE_PWR_DOWN);
@@ -270,7 +283,8 @@ void loop() {
 //	WDTCR = 0;
 
 	// disable interrupt to avoid repeated calls
-	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
+//	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
+	registers->INTERRUPT_NAME_FOR_PIN(BUTTON) = 0;
 
 	// enable timers (needed for sound an delay())
 #if defined PRUSI

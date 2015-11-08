@@ -18,7 +18,7 @@
 // Uno : PWM_1_B = D10, PWM_2_B = D3
 #define FREQUENCY_PWM  1
 #define VOLUME_PWM 2
-#define VOLUME_MAX 100
+#define VOLUME_MAX 20
 
 //const int noteFreqs[] = {
 ////   C    C#   D    D#   E    F    F#   G    G#   A    A#   B
@@ -51,7 +51,8 @@ int freqForNote(char name, short octave) {
 	return f;
 }
 
-struct sample {
+// TODO : put in prog mem
+const struct _sample {
 	int tempo;
 	char *score;
 } samples[] = {
@@ -246,10 +247,12 @@ void setup() {
 	digitalWrite(OUT_FREQ_1, LOW);
 	digitalWrite(OUT_FREQ_2, LOW);
 
+	mute();
+
 	setPWM(VOLUME_PWM, 0,
 			COMPARE_OUTPUT_MODE_NONE, 0,
 			COMPARE_OUTPUT_MODE_NORMAL, 0,
-			WGM_2_FAST_OCRA, PWM2_PRESCALER_1);
+			WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
 
 	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
 //	TIMSK0 = (1<<TOIE0);

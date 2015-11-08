@@ -83,7 +83,7 @@ struct _registers {
 	/* 0xB0 */	REGISTER(tccr2a, BIT(com2a, 2), BIT(com2b, 2), RESERVED_BITS(2), BIT(wgm2l, 2));
 	/* 0xB1 */	REGISTER(tccr2b, BIT(foc2a), BIT(foc2b), RESERVED_BITS(2), BIT(wgm2h), BIT(cs2, 3));
 	/* 0xB2 */	byte tcnt2;	// Timer/Counter2);
-	/* 0xB3 */	byte ocr2ba;	// Timer/Counter2 Output Compare Register A
+	/* 0xB3 */	byte ocr2a;	// Timer/Counter2 Output Compare Register A
 	/* 0xB4 */	byte ocr2b;	// Timer/Counter2 Output Compare Register B
 	/* 0xB5 */	RESERVED_BYTES(0xB5, 0xB5);
 	/* 0xB6 */	REGISTER(assr, RESERVED_BITS(1), BIT(exclk), BIT(as2), BIT(tcn2ub), BIT(ocr2aub), BIT(ocr2bub), BIT(tcr2aub), BIT(tcr2bub));
@@ -103,6 +103,11 @@ struct _registers {
 	/* 0xC6 */	byte udr0;	// USART I/O
 	/* 0xC7 - 0xFF */	RESERVED_BYTES(0xC7, 0xFF);
 } *registers = (struct _registers*)0x20;
+
+#define SET_WGM(timer, value) do { \
+	registers->CAT(CAT(wgm, timer), h) = (value) >> 2; \
+	registers->CAT(CAT(wgm, timer), l) = (value); \
+} while(0)
 
 typedef void (*interrupt_callback)();
 
