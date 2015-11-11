@@ -23,12 +23,11 @@
 	#define BUTTON 2
 #else
 	#define FREQUENCY_PWM  1
-	#define VOLUME_PWM 2
+	#define VOLUME_PWM 0
 	#define OUT_FREQ PWM_1_A
 	// Uno : D9
-	#define OUT_VOLUME PWM_2_B
-	// Uno : D3
-	#define REGISTER_VOLUME_TOP OCR2B
+	#define OUT_VOLUME PWM_0_B
+	// Uno : D5
 	#define LED 13
 	#define BUTTON 2
 #endif
@@ -103,21 +102,26 @@ void play(int frequency, int duration, short effect) {
 
 	if (effect == 0) {
 		currentVolume = VOLUME_MAX;
+		OCR0B = VOLUME_MAX - currentVolume;
+
 		delay(duration);
 	} else {
-		byte step = VOLUME_MAX > 20 ? 20 : VOLUME_MAX;
+		byte step = VOLUME_MAX > 20 ? 10 : VOLUME_MAX / 2;
 		short delta;
 		if (effect == -1) {
 			currentVolume = VOLUME_MAX;
-			delta = -VOLUME_MAX / step;
+			OCR0B = VOLUME_MAX - currentVolume;
+			delta = -VOLUME_MAX / (step*2);
 		} else {
-			currentVolume = 0;
-			delta = VOLUME_MAX / step;
+			currentVolume = VOLUME_MAX / 2;
+			OCR0B = VOLUME_MAX - currentVolume;
+			delta = VOLUME_MAX / (step*2);
 		}
 		duration /= step;
 
 		while(step --) {
 			currentVolume += delta;
+			OCR0B = VOLUME_MAX - currentVolume;
 //			Serial.print("v ");Serial.println(currentVolume);
 			delay(duration);
 		}
@@ -131,14 +135,14 @@ void mute() {
 			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
 			0, 0);
 #else
-//	registers->cs1 = 0;
-//	registers->cs2 = 0;
 	setPWM(FREQUENCY_PWM, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		COMPARE_OUTPUT_MODE_NONE, 0,
 		0, 0);
 #endif
 	currentVolume = 0;
+	OCR0B = VOLUME_MAX - currentVolume;
+	digitalWrite(OUT_FREQ, LOW);
 }
 
 void playNotes(char *notes) {
@@ -188,19 +192,6 @@ void toggleLed() {
 	led = !led;
 }
 
-// stop volume pwm when frequency pwm is low
-ISR(TIMER1_COMPA_vect) {
-//	OCR2A = 0;
-	OCR2B = 0;
-//	TCCR2B &= ~0x07; // CS2 = 0
-}
-// launch volume pwm when frequency pwm is high
-ISR(TIMER1_OVF_vect) {
-//	OCR2A = VOLUME_MAX;
-	OCR2B = VOLUME_MAX - currentVolume;
-//	TCCR2B |= PWM2_PRESCALER_8; // CS2 = PWM2_PRESCALER_8
-}
-
 ISR(INT0_vect) {}
 
 void setup() {
@@ -210,22 +201,24 @@ void setup() {
 	pinMode(OUT_FREQ, OUTPUT);
 	digitalWrite(OUT_FREQ, LOW);
 	pinMode(OUT_VOLUME, OUTPUT);
-	digitalWrite(OUT_VOLUME, LOW);
-
-	mute();
+	digitalWrite(OUT_VOLUME, HIGH);
 
 	setPWM(FREQUENCY_PWM, 0,
 			COMPARE_OUTPUT_MODE_NORMAL, 0,
 			COMPARE_OUTPUT_MODE_NONE, 0,
 			WGM_1_FAST_ICR, 0);
 
+#ifdef WITHOUT_MILLIS_FUNCTIONS
+	initTimerMillis(WGM_0_FAST_OCRA, VOLUME_MAX, 8);
+	TCCR0A = (TCCR0A & 0x0f) \
+			| (COMPARE_OUTPUT_MODE_NONE << COM0A0)
+			| (COMPARE_OUTPUT_MODE_NORMAL << COM0B0);
+
+#else
 	setPWM(VOLUME_PWM, 0,
 			COMPARE_OUTPUT_MODE_NONE, VOLUME_MAX,
 			COMPARE_OUTPUT_MODE_NORMAL, 0,
-			WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
-
-#ifdef WITHOUT_MILLIS_FUNCTIONS
-	initTimerMillis(WGM_0_FAST_OCRA, VOLUME_MAX, 8);
+			WGM_0_FAST_OCRA, PWM0_PRESCALER_8);
 #endif
 
 	ADCSRA &= ~(1<<ADEN);				//turn off ADC
@@ -234,7 +227,7 @@ void setup() {
 
 //	wdt_enable(7);
 
-	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
+	mute();
 
 	toggleLed();
 	delay(1000);
@@ -253,6 +246,7 @@ void loop() {
 //	WDTCR = (1<<WDP2) | (1<<WDP1) | (1<<WDP0) | (1<<WDE);
 
 	// disable timers
+
 #if defined PRUSI
 	PRR = PRTIM0 | PRTIM1 | PRUSI | PRADC;
 #else
