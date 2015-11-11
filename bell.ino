@@ -1,9 +1,3 @@
-
-// TODO :
-// - faire marcher la sonnette en Uno sur timer 2
-// - idem sur timer 0 => manips sur delay (comment surcharger TIMER0_OVF ?)
-// - ensuite sur tiny
-
 #include <Arduino.h>
 #include "ArduinoTools.h"
 #include "pwm/pwm.h"
@@ -15,10 +9,10 @@
 #ifdef __AVR_ATtinyX5__
 	#define FREQUENCY_PWM  1
 	#define VOLUME_PWM 0
-	#define OUT_FREQ ??
-	// ATTiny : ?? D1 = Pin 6
-	#define OUT_VOLUME ??
-	// ATTiny : ??
+	#define OUT_FREQ PWM_1_B
+	// ATTiny : D4 = pin 3
+	#define OUT_VOLUME PWM_0_B
+	// ATTiny : D1 = pin 6
 	#define LED 0
 	#define BUTTON 2
 #else
@@ -87,9 +81,9 @@ void play(int frequency, int duration, short effect) {
 
 #ifdef __AVR_ATtinyX5__
 	setPWM(FREQUENCY_PWM, top,
-			COMPARE_OUTPUT_MODE_1_CLEAR_NONE, top / 2,
 			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
-			SET_PWM_1_A, prescale);
+			COMPARE_OUTPUT_MODE_1_CLEAR_NONE, top / 2,
+			SET_PWM_1_B, prescale);
 #else
 	setPWM(FREQUENCY_PWM, top,
 			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
@@ -195,7 +189,9 @@ void toggleLed() {
 ISR(INT0_vect) {}
 
 void setup() {
+#ifdef __AVR_ATtinyX5__
 	Serial.begin(115200);
+#endif
 	pinMode(BUTTON, INPUT_PULLUP);
 	pinMode(LED, OUTPUT);
 	pinMode(OUT_FREQ, OUTPUT);
@@ -203,10 +199,23 @@ void setup() {
 	pinMode(OUT_VOLUME, OUTPUT);
 	digitalWrite(OUT_VOLUME, HIGH);
 
+#ifdef __AVR_ATtinyX5__
+	// set clock frequency prescaler to 1 => 8MHz
+	CLKPR = 0x80; // set high bit to enabled prescale write
+	CLKPR = 0x00; // set prescale to 0 = /1
+#endif
+
+#ifdef __AVR_ATtinyX5__
+	setPWM(FREQUENCY_PWM, 0,
+			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
+			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
+			0, 0);
+#else
 	setPWM(FREQUENCY_PWM, 0,
 			COMPARE_OUTPUT_MODE_NORMAL, 0,
 			COMPARE_OUTPUT_MODE_NONE, 0,
 			WGM_1_FAST_ICR, 0);
+#endif
 
 #ifdef WITHOUT_MILLIS_FUNCTIONS
 	initTimerMillis(WGM_0_FAST_OCRA, VOLUME_MAX, 8);
