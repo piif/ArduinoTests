@@ -7,6 +7,10 @@
 #include <Arduino.h>
 #include "ArduinoTools.h"
 #include "pwm/pwm.h"
+#ifdef WITHOUT_MILLIS_FUNCTIONS
+#include "myMillis/myMillis.h"
+#define delay myDelay
+#endif
 
 #ifdef __AVR_ATtinyX5__
 	#define FREQUENCY_PWM  1
@@ -101,15 +105,13 @@ void play(int frequency, int duration, short effect) {
 		currentVolume = VOLUME_MAX;
 		delay(duration);
 	} else {
-		byte step;
+		byte step = VOLUME_MAX > 20 ? 20 : VOLUME_MAX;
 		short delta;
 		if (effect == -1) {
 			currentVolume = VOLUME_MAX;
-			step = 20;
 			delta = -VOLUME_MAX / step;
 		} else {
 			currentVolume = 0;
-			step = 10;
 			delta = VOLUME_MAX / step;
 		}
 		duration /= step;
@@ -187,25 +189,17 @@ void toggleLed() {
 }
 
 // stop volume pwm when frequency pwm is low
-#ifdef __AVR_ATtinyX5__
 ISR(TIMER1_COMPA_vect) {
-#else
-ISR(TIMER1_COMPA_vect) {
-#endif
-	OCR2A = 0;
+//	OCR2A = 0;
 	OCR2B = 0;
 //	TCCR2B &= ~0x07; // CS2 = 0
 }
 // launch volume pwm when frequency pwm is high
 ISR(TIMER1_OVF_vect) {
-	OCR2A = VOLUME_MAX;
+//	OCR2A = VOLUME_MAX;
 	OCR2B = VOLUME_MAX - currentVolume;
 //	TCCR2B |= PWM2_PRESCALER_8; // CS2 = PWM2_PRESCALER_8
 }
-//volatile long ticks;
-//ISR(TIMER0_OVF_vect) {
-//	ticks++;
-//}
 
 ISR(INT0_vect) {}
 
@@ -226,9 +220,13 @@ void setup() {
 			WGM_1_FAST_ICR, 0);
 
 	setPWM(VOLUME_PWM, 0,
-			COMPARE_OUTPUT_MODE_NONE, 0,
+			COMPARE_OUTPUT_MODE_NONE, VOLUME_MAX,
 			COMPARE_OUTPUT_MODE_NORMAL, 0,
 			WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
+
+#ifdef WITHOUT_MILLIS_FUNCTIONS
+	initTimerMillis(WGM_0_FAST_OCRA, VOLUME_MAX, 8);
+#endif
 
 	ADCSRA &= ~(1<<ADEN);				//turn off ADC
 	ACSR |= _BV(ACD);					//disable the analog comparator
@@ -236,12 +234,7 @@ void setup() {
 
 //	wdt_enable(7);
 
-#ifdef __AVR_ATtinyX5__
 	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
-#else
-	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
-#endif
-//	TIMSK0 = (1<<TOIE0);
 
 	toggleLed();
 	delay(1000);
