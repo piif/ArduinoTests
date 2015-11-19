@@ -57,8 +57,8 @@ const struct _sample {
 	int tempo;
 	char *score;
 } samples[] = {
-	// test
-	{ 60, ">a" },
+//	// test
+//	{ 60, ">a" },
 	// Big Ben
 	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
 	// Hedwige theme
