@@ -18,7 +18,7 @@
 // Uno : PWM_1_B = D10, PWM_2_B = D3
 #define FREQUENCY_PWM  1
 #define VOLUME_PWM 2
-#define VOLUME_MAX 20
+#define VOLUME_MAX 32
 
 //const int noteFreqs[] = {
 ////   C    C#   D    D#   E    F    F#   G    G#   A    A#   B
@@ -57,7 +57,7 @@ const struct _sample {
 	char *score;
 } samples[] = {
 	// Big Ben
-	{ 120, ">+e>+c>+d>_g >g>+d>+e>_+c" },
+	{ 100, ">+e>+c>+d>_g >g>+d>+e>_+c" },
 	// Hedwge theme
 	{ 360, "_b__+e+g_+F___+e_+b_____+a_____+F__+e+g_+F___+D_+f__b>_b" },
 	// PopCorn
@@ -69,6 +69,34 @@ const struct _sample {
 int frequency = 440, volume = 100, tempo = 120;
 volatile int currentVolume = volume;
 boolean soundOn = false;
+
+byte volumes[] = {
+	32, 32, 32, 31, 31,
+	31, 30, 29, 29, 28,
+	27, 26, 24, 23, 21,
+	19, 17, 14, 10, 3
+};
+
+void setVolumePWM(int volume) {
+	if (OCR2B == volume) return;
+	if (volume == 0) {
+		setPWM(VOLUME_PWM, 0,
+				COMPARE_OUTPUT_MODE_NONE, 0,
+				COMPARE_OUTPUT_MODE_NORMAL, 0,
+				0, 0);
+		digitalWrite(OUT_FREQ_2, 0);
+	} else {
+		setPWM(VOLUME_PWM, 0,
+				COMPARE_OUTPUT_MODE_NONE, VOLUME_MAX,
+				COMPARE_OUTPUT_MODE_NORMAL, volume,
+				WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
+	}
+	OCR2B = volume;
+}
+
+void mute() {
+	setVolumePWM(0);
+}
 
 void play() {
 	unsigned long compFrequency = frequency;
@@ -90,7 +118,7 @@ void play() {
 			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
 			COMPARE_OUTPUT_MODE_NONE, 0,
 			WGM_1_FAST_ICR, prescale);
-	currentVolume = volume;
+	setVolumePWM(volume);
 }
 
 void play(int duration, short effect) {
@@ -103,36 +131,33 @@ void play(int duration, short effect) {
 			COMPARE_OUTPUT_MODE_NORMAL, top / 2,
 			COMPARE_OUTPUT_MODE_NONE, 0,
 			WGM_1_FAST_ICR, prescale);
+	if (TCNT1 > top) {
+        // Counter over the top, not good, put within range.
+		TCNT1 = top;
+	}
 
 	if (effect == 0) {
-		currentVolume = volume;
+		setVolumePWM(volume);
 		delay(duration);
 	} else {
-		byte step, delta;
-		if (effect == -1) {
-			currentVolume = VOLUME_MAX;
-			step = 20;
-			delta = -VOLUME_MAX / step;
-		} else {
-			currentVolume = 0;
-			step = 10;
-			delta = VOLUME_MAX / step;
-		}
+		byte step;
+		step = 20;
 		duration /= step;
-
-		while(step --) {
-			currentVolume += delta;
-			delay(duration);
+		if (effect == -1) {
+			while(step--) {
+				setVolumePWM(volumes[19 - step]);
+				delay(duration);
+			}
+		} else {
+			byte v = 0;
+			while(step--) {
+				v += VOLUME_MAX / 20;
+				setVolumePWM(v);
+				delay(duration);
+			}
 		}
+		setVolumePWM(volume);
 	}
-}
-
-void mute() {
-	setPWM(FREQUENCY_PWM, 0,
-		COMPARE_OUTPUT_MODE_NONE, 0,
-		COMPARE_OUTPUT_MODE_NONE, 0,
-		0, 0);
-	currentVolume = 0;
 }
 
 void playNotes(char *notes) {
@@ -192,7 +217,8 @@ void setFrequency(int f) {
 }
 
 void setVolume(int v) {
-	volume = v;
+	volume = constrain(v, 0, VOLUME_MAX);
+	setVolumePWM(v);
 	if (soundOn) {
 		play();
 	}
@@ -227,14 +253,14 @@ void help() {
 	Serial.println("0 (zero) sound off");
 }
 
-ISR(TIMER1_COMPA_vect) {
-	OCR2A = 0;
-	OCR2B = 0;
-}
-ISR(TIMER1_OVF_vect) {
-	OCR2A = VOLUME_MAX;
-	OCR2B = VOLUME_MAX - currentVolume;
-}
+//ISR(TIMER1_COMPA_vect) {
+//	OCR2A = 0;
+//	OCR2B = 0;
+//}
+//ISR(TIMER1_OVF_vect) {
+//	OCR2A = VOLUME_MAX;
+//	OCR2B = VOLUME_MAX - currentVolume;
+//}
 //volatile long ticks;
 //ISR(TIMER0_OVF_vect) {
 //	ticks++;
@@ -249,12 +275,7 @@ void setup() {
 
 	mute();
 
-	setPWM(VOLUME_PWM, 0,
-			COMPARE_OUTPUT_MODE_NONE, 0,
-			COMPARE_OUTPUT_MODE_NORMAL, 0,
-			WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
-
-	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
+//	TIMSK1 = (1<<OCIE1A) | (1<<TOIE1);
 //	TIMSK0 = (1<<TOIE0);
 
 	registerInput(sizeof(inputs), inputs);
