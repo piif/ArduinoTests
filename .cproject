@@ -25,6 +25,8 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.517138401" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1948359628" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.217822601" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -33,6 +35,8 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.269671213" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.189457045" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.968829802" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -46,6 +50,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.1427751949" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.1491633073" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.657318215" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -79,6 +85,8 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1196238072" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1697203644" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1245729542" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -87,6 +95,8 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.604534868" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.230451927" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1835034361" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -100,6 +110,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.604037088" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.916247943" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.765004663" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -133,6 +145,8 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.678192286" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.959562362" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.743303845" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -141,6 +155,8 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.1902203263" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1359960510" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.2046085219" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -154,6 +170,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.86290056" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.1798721734" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1458244475" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -187,6 +205,8 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.49432766" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1836871043" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1828097857" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -195,6 +215,8 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.613981133" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.59752080" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.320890607" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -208,6 +230,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.924581663" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.1392599310" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1842565283" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -241,6 +265,8 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1971524325" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.456434758" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.649342243" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -249,6 +275,8 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.66718489" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.472834062" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.207805878" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -262,6 +290,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.1634438246" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.1419212014" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.745550706" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -295,6 +325,8 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.2061394971" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.185844993" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.809454589" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -303,6 +335,8 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.1324021773" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1840127221" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1513382159" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -316,6 +350,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.1942948537" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.167224460" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoTools}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ArduinoLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/pif/Arduino/libraries"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.135258950" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -352,29 +388,33 @@
 		<configuration configurationName="Release">
 			<resource resourceType="PROJECT" workspacePath="/ArduinoExample"/>
 		</configuration>
+		<configuration configurationName="attinyx5noMillis"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.1646306142;de.innot.avreclipse.configuration.app.release.1277106742.1646306142.;de.innot.avreclipse.tool.cppcompiler.app.release.945444153;de.innot.avreclipse.cppcompiler.input.1104852811">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.cppcompiler.app.release.945444153;de.innot.avreclipse.cppcompiler.input.1104852811">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileCPP"/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742;de.innot.avreclipse.configuration.app.release.1277106742.;de.innot.avreclipse.tool.cppcompiler.app.release.985571608;de.innot.avreclipse.cppcompiler.input.1945111689">
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539.1512123777;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539.1512123777.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.886251237;cdt.managedbuild.tool.gnu.c.compiler.input.207805878">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.cppcompiler.app.release.985571608;de.innot.avreclipse.cppcompiler.input.1945111689">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileCPP"/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.407009932;de.innot.avreclipse.configuration.app.release.1277106742.407009932.;de.innot.avreclipse.tool.cppcompiler.app.release.1325112190;de.innot.avreclipse.cppcompiler.input.464238037">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.cppcompiler.app.release.1325112190;de.innot.avreclipse.cppcompiler.input.464238037">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileCPP"/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503;cdt.managedbuild.config.gnu.exe.release.1340414503.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1518477601;cdt.managedbuild.tool.gnu.cpp.compiler.input.217822601">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742;de.innot.avreclipse.configuration.app.release.1277106742.;de.innot.avreclipse.tool.compiler.winavr.app.release.537006868;de.innot.avreclipse.compiler.winavr.input.1253060651">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.compiler.winavr.app.release.537006868;de.innot.avreclipse.compiler.winavr.input.1253060651">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.1646306142;de.innot.avreclipse.configuration.app.release.1277106742.1646306142.;de.innot.avreclipse.tool.compiler.winavr.app.release.1204994617;de.innot.avreclipse.compiler.winavr.input.1564546834">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.compiler.winavr.app.release.1204994617;de.innot.avreclipse.compiler.winavr.input.1564546834">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.407009932;de.innot.avreclipse.configuration.app.release.1277106742.407009932.;de.innot.avreclipse.tool.compiler.winavr.app.release.296922857;de.innot.avreclipse.compiler.winavr.input.1549035150">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.compiler.winavr.app.release.296922857;de.innot.avreclipse.compiler.winavr.input.1549035150">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1129507085;cdt.managedbuild.tool.gnu.cpp.compiler.input.1245729542">
@@ -389,7 +429,10 @@
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.1292710782;cdt.managedbuild.tool.gnu.c.compiler.input.320890607">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.844558073;de.innot.avreclipse.configuration.app.release.1277106742.844558073.;de.innot.avreclipse.tool.cppcompiler.app.release.1020544132;de.innot.avreclipse.cppcompiler.input.1877727393">
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539.1512123777;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539.1512123777.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1714763891;cdt.managedbuild.tool.gnu.cpp.compiler.input.649342243">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.cppcompiler.app.release.1020544132;de.innot.avreclipse.cppcompiler.input.1877727393">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileCPP"/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.902384539.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1925673605;cdt.managedbuild.tool.gnu.cpp.compiler.input.1828097857">
@@ -404,17 +447,18 @@
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.770214601;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.770214601.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.556763169;cdt.managedbuild.tool.gnu.cpp.compiler.input.809454589">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.407009932.1424545145;de.innot.avreclipse.configuration.app.release.1277106742.407009932.1424545145.;de.innot.avreclipse.tool.compiler.winavr.app.release.233377396;de.innot.avreclipse.compiler.winavr.input.566684116">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.compiler.winavr.app.release.233377396;de.innot.avreclipse.compiler.winavr.input.566684116">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.770214601;cdt.managedbuild.config.gnu.exe.release.1340414503.935199099.770214601.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.552879909;cdt.managedbuild.tool.gnu.c.compiler.input.1513382159">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.407009932.1424545145;de.innot.avreclipse.configuration.app.release.1277106742.407009932.1424545145.;de.innot.avreclipse.tool.cppcompiler.app.release.475443256;de.innot.avreclipse.cppcompiler.input.2136210933">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.cppcompiler.app.release.475443256;de.innot.avreclipse.cppcompiler.input.2136210933">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileCPP"/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.configuration.app.release.1277106742.844558073;de.innot.avreclipse.configuration.app.release.1277106742.844558073.;de.innot.avreclipse.tool.compiler.winavr.app.release.379859430;de.innot.avreclipse.compiler.winavr.input.1436472072">
+		<scannerConfigBuildInfo instanceId="de.innot.avreclipse.tool.compiler.winavr.app.release.379859430;de.innot.avreclipse.compiler.winavr.input.1436472072">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="de.innot.avreclipse.core.AVRGCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 </cproject>

@@ -2,6 +2,9 @@
  * Testing access to registers of DS12887A Real-Time Clock
  */
 
+
+// TODO : read http://forum.arduino.cc/index.php?topic=138168.5
+
 #include <Arduino.h>
 #include "serialInput/serialInput.h"
 

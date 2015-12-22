@@ -2,6 +2,7 @@
 #define REGISTERS_H
 
 #include <Arduino.h>
+#include <stddef.h>
 
 // do what we want with ##
 #define PRIMITIVE_CAT(x, y) x##y
@@ -75,9 +76,17 @@
 #if defined(__AVR_ATtinyX5__)
 #include "registers.ATTinyX5.h"
 #elif defined(__AVR_ATmega328P__)
-#include "registers.ATMega328p.h"
+struct _registers {
+	#include "registers.ATMega328p.h"
+} *registers_map;
+byte *registers = (byte *)0x20;
+typedef union _register_accessors {
+	#include "registers.ATMega328p.h"
+} registers_accessors;
 #else
 #error Architecture not yet implemented
 #endif
 
+#define R(reg) (((registers_accessors *)(registers + offsetof(struct _registers, reg)))->reg)
+#define RF(reg, field) (((registers_accessors *)(registers + offsetof(struct _registers, reg)))->field)
 #endif

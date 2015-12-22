@@ -22,10 +22,14 @@ endif
 
 include ${ARDDUDE_DIR}/etc/main.mk
 
+# uncomment these lines to link correctly with ~/Arduino/librairies parts
+#${TARGET_DIR}/%.elf: objects
+#	${BIN_PREFIX}"${TOOLCHAIN_DIR}avr-gcc" ${LDFLAGS} -mmcu=atmega328p   -o "${TARGET_DIR}/${OUT_NAME}.elf" ${OBJS}  "-L${TARGET_DIR}" -lm ${LDFLAGS_EXTRA} -L$(dir ${CORE_LIB}) -lCore
+
 INCLUDE_FLAGS_EXTRA += -I.
 
 #ARD_LIBS_DIR := $(call truepath,../ArduinoLibs)
-#INCLUDE_FLAGS_EXTRA += -I${ARD_LIBS_DIR}
+#INCLUDE_FLAGS_EXTRA += ${ARD_LIBS_DIR:%=-I%} ${LIBRARIES_DIRS:%=-I%}
 #LDFLAGS_EXTRA += -L${ARD_LIBS_DIR}/target/${TARGET_BOARD} -lArduinoLibs
 
 ARD_TOOLS_DIR := $(call truepath,../ArduinoTools)

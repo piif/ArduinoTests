@@ -17,7 +17,7 @@
 #define LED 13
 #endif
 
-#define PERIOD 100
+#define PERIOD 1000
 
 void setup(void) {
 #if !defined __AVR_ATtinyX5__
@@ -29,9 +29,11 @@ void setup(void) {
 	digitalWrite(LED, LOW);
 }
 
+int count = 0;
 void loop() {
 	delay(PERIOD);
 	digitalWrite(LED, HIGH);
+	Serial.print("count = ");Serial.println(count++);
 	delay(PERIOD);
 	digitalWrite(LED, LOW);
 }

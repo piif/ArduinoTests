@@ -1,6 +1,6 @@
-#include "registers.h"
-
-struct _registers {
+//#include "registers.h"
+//
+//struct _registers {
 	/* 0x20 */	RESERVED_BYTES(0x20, 0x22);
 	/* 0x23 */	REGISTER(pinb, BITS_RANGE(pinb));
 	/* 0x24 */	REGISTER(ddrb, BITS_RANGE(ddrb));
@@ -102,37 +102,37 @@ struct _registers {
 	/* 0xC4 */	word ubrr0;	// USART Baud Rate Register
 	/* 0xC6 */	byte udr0;	// USART I/O
 	/* 0xC7 - 0xFF */	RESERVED_BYTES(0xC7, 0xFF);
-} *registers = (struct _registers*)0x20;
-
-#define SET_WGM(timer, value) do { \
-	registers->CAT(CAT(wgm, timer), h) = (value) >> 2; \
-	registers->CAT(CAT(wgm, timer), l) = (value); \
-} while(0)
-
-typedef void (*interrupt_callback)();
-
-typedef enum {
-	V_RESET,			// External Pin, Power-on Reset, Brown-out Reset and Watchdog System Reset
-	V_INT0,			// External Interrupt Request 0
-	V_INT1,			// External Interrupt Request 1
-	V_PCINT0,		// Pin Change Interrupt Request 0
-	V_PCINT1,		// Pin Change Interrupt Request 1
-	V_PCINT2,		// Pin Change Interrupt Request 2
-	V_WDT,			// Watchdog Time-out Interrupt
-	V_TIMER2_COMPA,	// Timer/Counter2 Compare Match A
-	V_TIMER2_COMPB,	// Timer/Counter2 Compare Match B
-	V_TIMER2_OVF,	// Timer/Counter2 Overflow
-	V_TIMER1_CAPT,	// Timer/Counter1 Capture Event
-	V_TIMER1_COMPA,	// Timer/Counter1 Compare Match A
-	V_TIMER1_COMPB,	// Timer/Coutner1 Compare Match B
-	V_TIMER1_OVF,	// Timer/Counter1 Overflow
-	V_TIMER0_COMPA,	// Timer/Counter0 Compare Match A
-	V_TIMER0_COMPB,	// Timer/Counter0 Compare Match B
-	V_TIMER0_OVF,	// Timer/Counter0 Overflow
-	V_SPI_STC,		// SPI Serial Transfer Complete
-	V_USART_RX,		// USART Rx Complete
-	V_USART_UDRE,	// USART, Data Register Empty
-	V_USART_TX		// USART, Tx Complete
-} interrupt_names;
-
-interrupt_callback *interrupt_vectors = 0x0000;
+//} *registers = (struct _registers*)0x20;
+//
+//#define SET_WGM(timer, value) do { \
+//	registers->CAT(CAT(wgm, timer), h) = (value) >> 2; \
+//	registers->CAT(CAT(wgm, timer), l) = (value); \
+//} while(0)
+//
+//typedef void (*interrupt_callback)();
+//
+//typedef enum {
+//	V_RESET,			// External Pin, Power-on Reset, Brown-out Reset and Watchdog System Reset
+//	V_INT0,			// External Interrupt Request 0
+//	V_INT1,			// External Interrupt Request 1
+//	V_PCINT0,		// Pin Change Interrupt Request 0
+//	V_PCINT1,		// Pin Change Interrupt Request 1
+//	V_PCINT2,		// Pin Change Interrupt Request 2
+//	V_WDT,			// Watchdog Time-out Interrupt
+//	V_TIMER2_COMPA,	// Timer/Counter2 Compare Match A
+//	V_TIMER2_COMPB,	// Timer/Counter2 Compare Match B
+//	V_TIMER2_OVF,	// Timer/Counter2 Overflow
+//	V_TIMER1_CAPT,	// Timer/Counter1 Capture Event
+//	V_TIMER1_COMPA,	// Timer/Counter1 Compare Match A
+//	V_TIMER1_COMPB,	// Timer/Coutner1 Compare Match B
+//	V_TIMER1_OVF,	// Timer/Counter1 Overflow
+//	V_TIMER0_COMPA,	// Timer/Counter0 Compare Match A
+//	V_TIMER0_COMPB,	// Timer/Counter0 Compare Match B
+//	V_TIMER0_OVF,	// Timer/Counter0 Overflow
+//	V_SPI_STC,		// SPI Serial Transfer Complete
+//	V_USART_RX,		// USART Rx Complete
+//	V_USART_UDRE,	// USART, Data Register Empty
+//	V_USART_TX		// USART, Tx Complete
+//} interrupt_names;
+//
+//interrupt_callback *interrupt_vectors = 0x0000;
