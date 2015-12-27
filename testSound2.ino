@@ -78,16 +78,15 @@ const struct _sample {
 int frequency = 440, tempo = 120;
 byte volume = VOLUME_MAX;
 int dutyFactor = 500;
-boolean soundOn = false;
 char soundMode = 'E'; // H = half, F = full, T = toneAC lib
 
 void play() {
-	if (soundMode == 'T') {
-		toneAC(frequency, volume, 0, 1);
+	if (volume == 0 || frequency == 0) {
 		return;
 	}
 
-	if (volume == 0 || frequency == 0) {
+	if (soundMode == 'T') {
+		toneAC(frequency, volume, 0, 1);
 		return;
 	}
 
@@ -194,53 +193,78 @@ void play(int duration, short effect) {
 	}
 }
 
-void mute() {
-	frequency = 0;
-	if (soundMode == 'T') {
-		noToneAC();
-	} else {
-		if (soundMode == 'E') {
+void initVolume() {
+	if (volume == 0) {
+		if (soundMode == 'T') {
+			noToneAC();
+		} else {
+			setPWM(FREQUENCY_PWM, 0,
+				COMPARE_OUTPUT_MODE_NONE, 0,
+				COMPARE_OUTPUT_MODE_NONE, 0,
+				0, 0);
 			setPWM(VOLUME_PWM, 0,
 					COMPARE_OUTPUT_MODE_NONE, 0,
 					COMPARE_OUTPUT_MODE_NONE, 0,
 					0, 0);
-			digitalWrite(OUT_FREQ_1, HIGH);
-			digitalWrite(OUT_FREQ_2, HIGH);
-			digitalWrite(OUT_VOLUME, LOW);
-		} else {
-			digitalWrite(OUT_VOLUME, LOW);
+			if (soundMode == 'E' || soundMode == 'F') {
+				digitalWrite(OUT_FREQ_1, HIGH);
+				digitalWrite(OUT_FREQ_2, HIGH);
+				digitalWrite(OUT_VOLUME, LOW);
+			} else {
+				digitalWrite(OUT_FREQ_1, LOW);
+				digitalWrite(OUT_FREQ_2, LOW);
+				digitalWrite(OUT_VOLUME, LOW);
+			}
 		}
-		setPWM(FREQUENCY_PWM, 0,
-			COMPARE_OUTPUT_MODE_NONE, 0,
-			COMPARE_OUTPUT_MODE_NONE, 0,
-			0, 0);
+	} else {
+		if (soundMode == 'E') {
+			setPWM(VOLUME_PWM, 0,
+					COMPARE_OUTPUT_MODE_NONE, VOLUME_MAX,
+					COMPARE_OUTPUT_MODE_NORMAL, 0,
+					WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
+		} else {
+			// T, F and H modes don't use enable pin => set to 1.
+			digitalWrite(OUT_VOLUME, HIGH);
+		}
 	}
 }
-void unmute() {
+
+void setVolume(int v) {
+	volume = constrain(v, 0, VOLUME_MAX);
+	initVolume();
+
 	if (soundMode == 'E') {
-		setPWM(VOLUME_PWM, 0,
-				COMPARE_OUTPUT_MODE_NONE, VOLUME_MAX,
-				COMPARE_OUTPUT_MODE_NORMAL, 0,
-				WGM_2_FAST_OCRA, PWM2_PRESCALER_8);
+		OCR2B = volume;
 	} else {
-		digitalWrite(OUT_VOLUME, 1);
+		dutyFactor = volumeScales[volume - 1];
 	}
+}
+
+void setDutyFactor(int f) {
+	dutyFactor = constrain(f, 0, 500);
+	play();
+}
+
+byte oldVolume = volume;
+void mute() {
+	oldVolume = volume;
+	setVolume(0);
+}
+void unmute() {
+	setVolume(oldVolume);
+	play();
 }
 
 void setNote(char *n) {
 	frequency = freqForNote(*n, 0);
-	if (soundOn) {
-		unmute();
-		play();
-	}
+	unmute();
+	play();
 }
 
 void setFrequency(int f) {
 	frequency = f;
-	if (soundOn) {
-		unmute();
-		play();
-	}
+	unmute();
+	play();
 }
 
 void setMode(char *mode) {
@@ -251,50 +275,17 @@ void setMode(char *mode) {
 	case 'E':
 		soundMode = mode[0];
 	}
-	if (soundOn) {
+	initVolume();
+	if (volume > 0) {
 		play();
-	} else {
-		mute();
 	}
-}
-
-void setSoundOff() {
-	soundOn = false;
-	mute();
-}
-
-void setSoundOn() {
-	soundOn = true;
-	unmute();
-	play();
-}
-
-void setVolume(int v) {
-	if (soundMode == 'E') {
-		volume = constrain(v, 0, VOLUME_MAX);
-//		volume = constrain(v, 0, 255);
-		OCR2B = volume;
-	} else {
-		volume = constrain(v, 0, VOLUME_MAX);
-		if (volume > 0) {
-			dutyFactor = volumeScales[volume - 1];
-			setSoundOn();
-		} else {
-			setSoundOff();
-		}
-	}
-}
-
-void setDutyFactor(int f) {
-	dutyFactor = constrain(f, 0, 500);
-	play();
 }
 
 void playNotes(char *notes) {
 	Serial.print("Playing "); Serial.println(notes);
 	short duration = 1;
 	short effect = 0; // -1 for > / 0 for flat / 1 for <
-	setSoundOn();
+	unmute();
 	while(*notes) {
 //		Serial.print(" -> "); Serial.println(*notes);
 		if (*notes == '>') {
@@ -314,6 +305,7 @@ void playNotes(char *notes) {
 			// silence
 			mute();
 			delay((60L * 1000 / tempo) * duration);
+			unmute();
 		} else {
 			int octave = 0;
 			if (*notes == '+') {
@@ -386,10 +378,10 @@ void help() {
 	Serial.println("t tempo (notes per minute)");
 	Serial.println("m music index");
 
-	Serial.print("sound  "); Serial.println(soundOn ? "on" : "off");
+	Serial.print("mode   "); Serial.println(soundMode);
+	Serial.print("volume "); Serial.println(volume);
 	Serial.print("dutyFactor "); Serial.println(dutyFactor);
 	Serial.print("freq   "); Serial.println(frequency);
-	Serial.print("mode   "); Serial.println(soundMode);
 }
 
 InputItem inputs[] = {
@@ -397,8 +389,8 @@ InputItem inputs[] = {
 	{ 'f', 'I', (void *)setFrequency },
 	{ 'v', 'I', (void *)setVolume },
 	{ 'n', 'S', (void *)setNote },
-	{ '1', 'S', (void *)setSoundOn },
-	{ '0', 'S', (void *)setSoundOff },
+	{ '1', 'S', (void *)unmute },
+	{ '0', 'S', (void *)mute },
 	{ 'd', 'I', (void *)setDutyFactor },
 	{ 'T', 'I', (void *)test },
 
