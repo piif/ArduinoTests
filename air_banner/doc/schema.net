@@ -1,0 +1,65 @@
+*PADS-PCB*
+*PART*
+UNO     ARDUINO_UNO
+R1      This part has no 'Package' attribute
+D1      This part has no 'Package' attribute
+R2      This part has no 'Package' attribute
+D2      This part has no 'Package' attribute
+R3      This part has no 'Package' attribute
+D3      This part has no 'Package' attribute
+R4      This part has no 'Package' attribute
+D4      This part has no 'Package' attribute
+R5      This part has no 'Package' attribute
+D5      This part has no 'Package' attribute
+R6      This part has no 'Package' attribute
+D6      This part has no 'Package' attribute
+R7      This part has no 'Package' attribute
+D7      This part has no 'Package' attribute
+R8      This part has no 'Package' attribute
+D8      This part has no 'Package' attribute
+V9      This part has no 'Package' attribute
+MOTOR   
+SW1     
+SW2     This part has no 'Package' attribute
+U1      package name for PCB layout
+
+*NET*
+*SIGNAL*  TCPOWEREARTH
+D1.2 D2.2 D3.2 D4.2 D5.2 D6.2 D7.2 D8.2 SW2.1 SW1.2 U1.9
+*SIGNAL*  N000000
+UNO.72 U1.1
+*SIGNAL*  N000001
+UNO.71 SW2.2
+*SIGNAL*  N000002
+R1.2 UNO.67
+*SIGNAL*  N000003
+D1.1 R1.1
+*SIGNAL*  N000004
+R2.2 UNO.68
+*SIGNAL*  N000005
+D2.1 R2.1
+*SIGNAL*  N000006
+D3.1 R3.1
+*SIGNAL*  N000007
+D4.1 R4.1
+*SIGNAL*  N000008
+R5.2 UNO.79
+*SIGNAL*  N000009
+D5.1 R5.1
+*SIGNAL*  N000010
+D6.1 R6.1
+*SIGNAL*  N000011
+R7.2 UNO.81
+*SIGNAL*  N000012
+D7.1 R7.1
+*SIGNAL*  N000013
+R8.2 UNO.82
+*SIGNAL*  N000014
+D8.1 R8.1
+*SIGNAL*  N000015
+V9.1 UNO.6 MOTOR.1 U1.10
+*SIGNAL*  N000016
+SW1.1 V9.2
+*SIGNAL*  N000017
+U1.18 MOTOR.2
+*END*
