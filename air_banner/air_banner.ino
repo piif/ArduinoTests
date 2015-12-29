@@ -3,12 +3,14 @@
  * version amelioree
  */
 
-#include <MsTimer2.h>
+#include "Arduino.h"
+#include <MsTimer2/MsTimer2.h>
 #include <avr/sleep.h>
+#include <avr/io.h>
 
 #define POLICE "police_5x8_rev.h"
 #define CHAR_WIDTH 5
-#include "banner.h"
+#include "banner/banner.h"
 
 // WIRES :
 
@@ -73,6 +75,8 @@ void setup() {
   bannerSetMessage(message);
 }
 
+void doStep();
+
 void launchAnimation() {
   // signal step "waiting button"
   digitalWrite(DISPLAY_FIRST_PIN, HIGH);
@@ -134,7 +138,7 @@ void buttonHandler() {
 ***/
 
 void doStep() {
-  byte out, port;
+  byte out;
 
   // one step beyond ...
   nbSteps--;
@@ -191,3 +195,10 @@ void loop() {
   sleepNow();
 }
 
+int main(void) {
+	init();
+	setup();
+	for(;;) {
+		loop();
+	}
+}
