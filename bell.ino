@@ -233,7 +233,7 @@ void playNotes(char *notes) {
 }
 
 // button interrupt must be present to avoid reset
-//ISR(INT0_vect) {}
+ISR(INT0_vect) {}
 
 #ifdef RANDOM_THRU_JITTER
 // https://gist.github.com/endolith/2568571#file-readme-md
@@ -329,30 +329,28 @@ byte randByte() {
 }
 #endif
 
-int index;
+int index = 0;
 
 void setup() {
-	// everything in input pullup -> should avoid
-	// strange behavior with reset pin ...
-#ifdef __AVR_ATtinyX5__
-	DDRB = 0; PORTB = 0xFF;
-#endif
-
 	// do it at startup to hope that pins are still in weird states
 //	initRandom();
 //	index = randByte() % NB_SAMPLES;
-	index=0;
 
-//	ADCSRA &= ~(1<<ADEN);				//turn off ADC
-//	ACSR |= _BV(ACD);					//disable the analog comparator
-//	MCUCR |= _BV(BODS) | _BV(BODSE);	//turn off the brown-out detector
+	ADCSRA &= ~(1<<ADEN);				//turn off ADC
+	ACSR |= _BV(ACD);					//disable the analog comparator
+	MCUCR |= _BV(BODS) | _BV(BODSE);	//turn off the brown-out detector
 
 //#ifndef __AVR_ATtinyX5__
 //	Serial.begin(115200);
 //	Serial.print("play ");Serial.println(index);
 //#endif
 
-//	pinMode(BUTTON, INPUT_PULLUP);
+#ifdef __AVR_ATtinyX5__
+	// reset pin in input pullup -> should avoid
+	// strange behavior with reset ...
+	pinMode(5, INPUT_PULLUP);
+#endif
+	pinMode(BUTTON, INPUT_PULLUP);
 	pinMode(LED, OUTPUT);
 	pinMode(OUT_FREQ_1, OUTPUT);
 	digitalWrite(OUT_FREQ_1, LOW);
@@ -396,60 +394,61 @@ void setup() {
 	toggleLed();
 	delay(100);
 
-	tempo = samples[index].tempo;
-	playNotes(samples[index].score);
-	mute();
+//	tempo = samples[index].tempo;
+//	playNotes(samples[index].score);
+//	mute();
 
 	// TODO : send "off" signal to empty capacitor
 }
 
 void loop() {
-////	wdt_reset();
-////	wdt_enable(7);
-////	// prepare to program watchdog timer
-////	__asm__ __volatile__ ("wdr"); // wdt_reset();
-////	WDTCR |= (1<<WDCE) | (1<<WDE);
-////	// make it reset after 2 sec.
-////	WDTCR = (1<<WDP2) | (1<<WDP1) | (1<<WDP0) | (1<<WDE);
-//
-//	// disable timers
-//
-//#if defined PRUSI
-//	PRR = PRTIM0 | PRTIM1 | PRUSI | PRADC;
-//#else
-//	PRR = PRTIM0 | PRTIM1 | PRADC;
+//	wdt_reset();
+//	wdt_enable(7);
+//	// prepare to program watchdog timer
+//	__asm__ __volatile__ ("wdr"); // wdt_reset();
+//	WDTCR |= (1<<WDCE) | (1<<WDE);
+//	// make it reset after 2 sec.
+//	WDTCR = (1<<WDP2) | (1<<WDP1) | (1<<WDP0) | (1<<WDE);
+
+//#ifdef __AVR_ATtinyX5__
+//	DDRB = 0; PORTB = 0xFF;
 //#endif
-//
-//	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
-//
-//	// wait ...
-//	sleepNow(SLEEP_MODE_PWR_DOWN);
-//
-//	// disable watchdog (or reset may occur before the end of the job)
-////	wdt_reset();
-////	__asm__ __volatile__ ("wdr");
-////	wdt_disable();
-////	WDTCR |= (1<<WDCE) | (1<<WDE);
-////	WDTCR = 0;
-//
-//	// disable interrupt to avoid repeated calls
-//	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
-//
-//	// enable timers (needed for sound an delay())
-//#if defined PRUSI
-//	PRR = PRUSI | PRADC;
-//#else
-//	PRR = PRADC;
-//#endif
-//
-//	// do the job
-//	toggleLed();
-//	delay(200);
-//	toggleLed();
-//
-//	tempo = samples[index].tempo;
-//	playNotes(samples[index].score);
-//	index = (index + 1) % NB_SAMPLES;
-//
-//	// loop back to start
+
+	// disable timers
+#if defined PRUSI
+	PRR = PRTIM0 | PRTIM1 | PRUSI | PRADC;
+#else
+	PRR = PRTIM0 | PRTIM1 | PRADC;
+#endif
+
+	enableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON), LOW);
+
+	// wait ...
+	sleepNow(SLEEP_MODE_PWR_DOWN);
+
+	// disable watchdog (or reset may occur before the end of the job)
+//	wdt_reset();
+//	__asm__ __volatile__ ("wdr");
+//	wdt_disable();
+//	WDTCR |= (1<<WDCE) | (1<<WDE);
+//	WDTCR = 0;
+
+	// disable interrupt to avoid repeated calls
+	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
+
+	// enable timers (needed for sound an delay())
+#if defined PRUSI
+	PRR = PRUSI | PRADC;
+#else
+	PRR = PRADC;
+#endif
+
+	// do the job
+	toggleLed();
+
+	tempo = samples[index].tempo;
+	playNotes(samples[index].score);
+	index = (index + 1) % NB_SAMPLES;
+
+	toggleLed();
 }
