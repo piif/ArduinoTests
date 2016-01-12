@@ -45,7 +45,7 @@
 
 #define VOLUME_MAX 32
 
-volatile boolean led = HIGH;
+volatile boolean led = LOW;
 
 void toggleLed() {
 	digitalWrite(LED, led);
@@ -148,7 +148,7 @@ void play(int frequency, int duration, short effect) {
 #ifdef __AVR_ATtinyX5__
 	setPWM(FREQUENCY_PWM, top,
 			COMPARE_OUTPUT_MODE_1_NONE_NONE, 0,
-			COMPARE_OUTPUT_MODE_1_CLEAR_NONE, top / 2,
+			COMPARE_OUTPUT_MODE_1_CLEAR_SET, top / 2,
 			SET_PWM_1_B, prescale);
 #else
 	setPWM(FREQUENCY_PWM, top,
@@ -432,6 +432,12 @@ void loop() {
 //	wdt_disable();
 //	WDTCR |= (1<<WDCE) | (1<<WDE);
 //	WDTCR = 0;
+
+	// don't do anything if button is not pressed (processor was awaken up
+	// by another side effect)
+	if (digitalRead(BUTTON) != LOW) {
+		return;
+	}
 
 	// disable interrupt to avoid repeated calls
 	disableInputInterrupt(INTERRUPT_FOR_PIN(BUTTON));
