@@ -1,81 +1,121 @@
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
-	#include "serialInput/serialInput.h"
 	// other includes with full pathes
 	// example : #include "led7/led7.h"
+	#include "Lego/Lego.h"
+	#include "serialInput/serialInput.h"
 #else
 	// other includes with short pathes
 	#include "serialInput.h"
+	#include "Lego.h"
 #endif
 
 #ifndef DEFAULT_BAUDRATE
 	#define DEFAULT_BAUDRATE 115200
 #endif
 
+Lego lego;
 
-#define LED 13
-#define SENSOR A0
-#define MOTOR_DIGIT 2
-#define MOTOR_PWM 3
-
-
-void setMotor(int s) {
-	if (s == 0) {
-		digitalWrite(MOTOR_DIGIT, LOW);
-		digitalWrite(MOTOR_PWM, LOW);
-		Serial.println("motor off");
-	} else if (s > 0) {
-		digitalWrite(MOTOR_DIGIT, LOW);
-		analogWrite(MOTOR_PWM, s);
-		Serial.print("motor ");Serial.println(s);
-	} else {
-		digitalWrite(MOTOR_DIGIT, HIGH);
-		analogWrite(MOTOR_PWM, ~(-s));
-		Serial.print("motor ");Serial.println(s);
-	}
-}
-
-void setLight(int s) {
-	// TODO
-}
-
-void readSensor() {
-	Serial.println("Reading sensor");
-	for(int i = 0; i < 20; i++) {
-		int v = analogRead(SENSOR);
-		Serial.println(v);
-		delay(1000);
-	}
-}
-
-InputItem inputs[] = {
-	{ 'm', 'I', (void *)setMotor },
-	{ 'l', 'I', (void *)setLight },
-	{ 's', 'S', (void *)readSensor }
-};
+//void readSensor(byte number) {
+//	Serial.print("Reading sensor ");Serial.println(lego.sensors[number]);
+//	for(int i = 0; i < 30; i++) {
+//		int v = analogRead(lego.sensors[number]);
+//		//bool b = lego.readSensor(number);
+//		Serial.println(v);//Serial.print(" => ");Serial.println(b);
+//		delay(500);
+//	}
+//}
 
 void help() {
-	Serial.println("m [-255..255] : motor speed");
-	Serial.println("l 0 / 1 light off / on");
-	Serial.println("s read sensor");
+	Serial.println("m [0..3] [-255..255] : motor speed");
+	Serial.println("l [0..3] 0 / 1 light off / on");
+	Serial.println("s [0..3] read sensor");
 }
 
 void setup(void) {
 	Serial.begin(DEFAULT_BAUDRATE);
-
-	pinMode(LED, OUTPUT);
-	pinMode(MOTOR_DIGIT, OUTPUT);
-	pinMode(MOTOR_PWM, OUTPUT);
-	pinMode(SENSOR, INPUT);
-
-	setMotor(0);
-	setLight(0);
-
-	registerInput(sizeof(inputs), inputs);
+	lego.begin(Serial);
 	help();
 }
 
-bool sensor = LOW;
+char buffer[50];
+byte index = 0;
+
+bool interpret() {
+	buffer[index] = '\0';
+	Serial.print("interpret ");Serial.println(buffer);
+	// must have [mls]\s*\d(\s+\d+)
+	if (index ==0) {
+		return false;
+	}
+	char command = buffer[0];
+	if (command != 'm' && command != 'l' && command != 's') {
+		return false;
+	}
+	int i = 1;
+	while(buffer[i] == ' ' && i < index) {
+		i++;
+	}
+	if (i == index || (buffer[i] < '0' && buffer[i] > '3')) {
+		return false;
+	}
+	byte number = buffer[i] - '0';
+	if (command == 's') {
+//		readSensor(number);
+		bool b = lego.readSensor(number);
+		Serial.print(" => ");Serial.println(b);
+		return true;
+	}
+	i++;
+	while(buffer[i] == ' ' && i < index) {
+		i++;
+	}
+	if (i >= index) {
+		return false;
+	}
+	if (command == 'l') {
+		if (buffer[i] == '0') {
+			lego.setLight(number, LOW);
+			return true;
+		} else if (buffer[i] == '1') {
+			lego.setLight(number, HIGH);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	int value = 0;
+	bool neg = false;
+	if (buffer[i] == '-') {
+		neg = true;
+		i++;
+	}
+	while(i < index && buffer[i] >= '0' && buffer[i] <= '9') {
+		value = value * 10 + buffer[i] - '0';
+		i++;
+	}
+	if (neg) {
+		value = -value;
+	}
+	lego.setMotor(number, value);
+}
+
+void handleInput() {
+	if (Serial.available()) {
+		int c = Serial.read();
+		if (c == -1 || c == '\n' || c == '\r') {
+			interpret();
+			index = 0;
+		} else {
+			buffer[index] = c;
+			index++;
+			if (index == 50) {
+				interpret();
+				index = 0;
+			}
+		}
+	}
+}
 
 void loop() {
 	handleInput();
