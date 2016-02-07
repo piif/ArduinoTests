@@ -7,17 +7,23 @@
 #endif
 
 #ifndef DEFAULT_BAUDRATE
-	#define DEFAULT_BAUDRATE 115200
+	#ifdef __AVR_ATmega644P__
+		#define DEFAULT_BAUDRATE 19200
+	#else
+		#define DEFAULT_BAUDRATE 115200
+	#endif
 #endif
 
 
-#if defined __AVR_ATtinyX5__
+//TODO : comprendre de ou sort le CORE_DIR dans le makefile de arddude/target/sanguino
+
+#if defined __AVR_ATtinyX5__ || defined __AVR_ATmega644P__
 #define LED 4
 #else
 #define LED 13
 #endif
 
-#define PERIOD 1000
+#define PERIOD 250
 
 void setup(void) {
 #if !defined __AVR_ATtinyX5__
@@ -33,8 +39,8 @@ int count = 0;
 void loop() {
 	delay(PERIOD);
 	digitalWrite(LED, HIGH);
-	Serial.print("count = ");Serial.println(count++);
-	delay(PERIOD);
+//	Serial.print("count = ");Serial.println(count++);
+	delay(PERIOD*3);
 	digitalWrite(LED, LOW);
 }
 
