@@ -12,6 +12,7 @@ $(info CALLER_DIR = ${CALLER_DIR})
 
 UPLOAD_PORT ?= /dev/ttyACM0
 TARGET_BOARD ?= uno
+UPLOAD_OPTIONS = -c "raw,cr"
 
 ifneq (${MAIN_SOURCE},)
   override MAIN_SOURCE := $(subst ${CALLER_DIR}/,,${MAIN_SOURCE})
