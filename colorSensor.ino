@@ -1,3 +1,6 @@
+// PIF_TOOL_CHAIN_OPTION: UPLOAD_OPTIONS := -c "raw,cr"
+// PIF_TOOL_CHAIN_OPTION: EXTRA_LIBS := ArduinoLibs ArduinoTools
+
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
 	// other includes with full pathes
