@@ -152,6 +152,6 @@ void loop() {
 	handleInput();
 	if (doLoop) {
 		readColor();
-		delay(50);
+		delay(500);
 	}
 }
