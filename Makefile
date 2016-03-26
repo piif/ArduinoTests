@@ -15,11 +15,10 @@ TARGET_BOARD ?= uno
 UPLOAD_OPTIONS = -c "raw,cr"
 
 ifneq (${MAIN_SOURCE},)
+  override MAIN_SOURCE := $(subst ${CALLER_DIR}/,,${MAIN_SOURCE})
   -include ${MAIN_SOURCE:%.ino=target/%.mk}
 
-  override MAIN_SOURCE := $(subst ${CALLER_DIR}/,,${MAIN_SOURCE})
   SOURCE_DIRS := $(dir ${MAIN_SOURCE})
-
   SOURCE_EXCLUDE_PATTERNS := .ino
 endif
 
@@ -29,8 +28,8 @@ target/%.mk: %.ino
 	sed -n 's/^.*PIF_TOOL_CHAIN_OPTION *: *//p' $< > $@
 
 # uncomment these lines to link correctly with ~/Arduino/librairies parts
-#${TARGET_DIR}/%.elf: objects
-#	${BIN_PREFIX}"${TOOLCHAIN_DIR}avr-gcc" ${LDFLAGS} -mmcu=atmega328p   -o "${TARGET_DIR}/${OUT_NAME}.elf" ${OBJS}  "-L${TARGET_DIR}" -lm ${LDFLAGS_EXTRA} -L$(dir ${CORE_LIB}) -lCore
+${TARGET_DIR}/%.elf: objects
+	${BIN_PREFIX}"${TOOLCHAIN_DIR}avr-gcc" ${LDFLAGS} -mmcu=atmega328p   -o "${TARGET_DIR}/${OUT_NAME}.elf" ${OBJS}  "-L${TARGET_DIR}" -lm ${LDFLAGS_EXTRA} -L$(dir ${CORE_LIB}) -lCore
 
 INCLUDE_FLAGS_EXTRA += -I.
 

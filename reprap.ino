@@ -14,40 +14,64 @@
 	#endif
 #endif
 
+// FROM arduino pins.h
+// D0  = PB0
+// ..
+// D7  = PB7
+// D8  = PD0
+// ..
+// D15 = PD7
+// D16 = PC0
+// ..
+// D23 = PC7
+// D24 = PA7 /!\
+// ..
+// D31 = PA0
+
 // FROM https://github.com/kliment/Sprinter/blob/master/Sprinter/pins.h#L301
 // x axis
 #define X_STEP_PIN 15
 #define X_DIR_PIN 18
-#define X_MIN_PIN 20
 #define X_ENABLE_PIN 24 //actually uses Y_enable_pin
-#define X_MAX_PIN -1
+#define X_MIN_PIN 20
 
 // y axes
 #define Y_STEP_PIN 23
 #define Y_DIR_PIN 22
-#define Y_MIN_PIN 25
 #define Y_ENABLE_PIN 24 //shared with X_enable_pin
-#define Y_MAX_PIN -1
+#define Y_MIN_PIN 25
 
 // z axes
 #define Z_STEP_PIN 27
 #define Z_DIR_PIN 28
-#define Z_MIN_PIN 30
 #define Z_ENABLE_PIN 29
-#define Z_MAX_PIN -1
+#define Z_MIN_PIN 30
 
 //extruder pins
 #define E_STEP_PIN 12
 #define E_DIR_PIN 17
 #define E_ENABLE_PIN 3
+// where are those ones ?
 #define HEATER_0_PIN 16
 #define TEMP_0_PIN 0
 //TODO : comprendre de ou sort le CORE_DIR dans le makefile de arddude/target/sanguino
 
 // LOW should open mofset linked to FAN connector
-#define FAN_PIN 1
+#define FAN_PIN 16
 
-#define LED 4
+// 5 lines of 3 pins (2 for bottom one) at bottom left corner
+// see http://reprap.org/wiki/Monotronics#Pinout_Maps
+// pinout :
+// GND +5V D26/A5
+// GND +5V D1
+// GND +5V ARef
+// GND +5V D4
+// GND D31/A0
+#define USER_1 26
+#define USER_2 1
+#define USER_3 -1
+#define USER_4 4
+#define USER_5 31
 
 #define NB_X 100
 #define X_DELAY 1

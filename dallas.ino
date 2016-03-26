@@ -2,6 +2,8 @@
  * Testing access to registers of DS12887A Real-Time Clock
  */
 
+// PIF_TOOL_CHAIN_OPTION: UPLOAD_OPTIONS := -c "raw,cr"
+// PIF_TOOL_CHAIN_OPTION: EXTRA_LIBS := ArduinoLibs ArduinoTools
 
 // TODO : read http://forum.arduino.cc/index.php?topic=138168.5
 
