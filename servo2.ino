@@ -19,12 +19,28 @@
 	#define DEFAULT_BAUDRATE 115200
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 #define LEFT_FOOT 11
-#define RIGHT_FOOT 10
-#define LEFT_LEG 8
+#define RIGHT_FOOT 8
+#define LEFT_LEG 10
 #define RIGHT_LEG 9
+
+// range of 180° values for several kinds of servo
+#define FUBATA_S3003 600, 2400
+#define MG996R 630, 2620 // 850, 2400
+
+// adapt following line to servo you actually use
+#define LEFT_FOOT_RANGE FUBATA_S3003
+#define RIGHT_FOOT_RANGE FUBATA_S3003
+#define LEFT_LEG_RANGE MG996R
+#define RIGHT_LEG_RANGE MG996R
+
+// adapt following lines to actual servo alignment
+#define LEFT_FOOT_ZERO 90
+#define RIGHT_FOOT_ZERO 90
+#define LEFT_LEG_ZERO 100
+#define RIGHT_LEG_ZERO 90
 
 class MyServo {
 public:
@@ -32,6 +48,8 @@ public:
 	Servo motor;
 
 	// value to set for position "zero"
+	// the idea consists in converting a 0..180° or 0..120° range to -90..90
+	// thus "0" may be 90°, or 60 depending on motor amplitude
 	int zero;
 	// default speed, in ms/° (thus it's more a delay than a speed ...)
 	unsigned int speed;
@@ -43,14 +61,24 @@ public:
 	// delay to match target
 	unsigned long startTime, targetTime;
 
-	void init(byte pin, int _zero, int _speed = 10) {
+	// min and max arguments are relative to 0 and 180 position in Servo lib space
+	// user may have to fix a over-range value to handle 120° motor "as if" it is 180°
+	// range
+	void init(byte _pin, int _zero = 90, int _min = -1, int _max = -1) {
 		zero = _zero;
-		speed = _speed;
+		speed = 10;
 		currentAngle = 0;
 		targetTime = 0;
-		pinMode(pin, OUTPUT);
-		motor.attach(pin);
+		pinMode(_pin, OUTPUT);
+		if (_min == -1) {
+			motor.attach(_pin);
+		} else {
+			motor.attach(_pin, _min, _max);
+		}
 		motor.write(zero);
+	}
+	void setSpeed(int _speed) {
+		speed = _speed;
 	}
 	void update() {
 		// rule of thumb between target-current and ttl
@@ -109,15 +137,18 @@ MyServo leftLeg, rightLeg;
 void setLf(int angle) {
 	leftFoot.setAngle(angle);
 }
-void setRf(int angle) {
-	rightFoot.setAngle(angle);
-}
 void setLl(int angle) {
 	leftLeg.setAngle(angle);
 }
-void setRl(int angle) {
-	rightLeg.setAngle(angle);
+// consider right members as "inverted" thus 30° is "in front"
+// for legs and "down" for feet
+void setRf(int angle) {
+	rightFoot.setAngle(-angle);
 }
+void setRl(int angle) {
+	rightLeg.setAngle(-angle);
+}
+
 void setSpeed(int speed) {
 	leftFoot.speed = speed;
 	rightFoot.speed = speed;
@@ -139,42 +170,45 @@ void zero() {
 	rightLeg.setAngle(0);
 }
 
-void bow(int dir) {
-	setLf(-45);
-	setRf(45);
-	waitIdle();
-	if (dir > 0) {
-		setRf(-45);
+void bow(int angle) {
+	if (angle < 0) {
+		setLf(-angle);
+		setRf(-angle);
 		waitIdle();
-		setLf(0);
+		setLf(angle);
+		waitIdle();
+		setRf(angle);
 	} else {
-		setLf(45);
+		setLf(angle);
+		setRf(angle);
 		waitIdle();
-		setRf(0);
+		setRf(-angle);
+		waitIdle();
+		setLf(-angle);
 	}
 }
 
 void walk(int nbSteps) {
 	if (nbSteps > 0) {
 		while(nbSteps --) {
-			setLf(20);setRf(20);
+			setLf(45);setRf(-45);
 			waitIdle();
-			setLl(30);setRl(30);
+			setLl(30);setRl(-30);
 			waitIdle();
-			setLf(-20);setRf(-20);
+			setLf(-45);setRf(45);
 			waitIdle();
-			setLl(-30);setRl(-30);
+			setLl(-30);setRl(30);
 			waitIdle();
 		}
 	} else {
 		while(nbSteps ++) {
-			setLf(20);setRf(20);
+			setLf(45);setRf(-45);
 			waitIdle();
-			setLl(-20);setRl(-20);
+			setLl(-30);setRl(30);
 			waitIdle();
-			setLf(-20);setRf(-20);
+			setLf(-45);setRf(45);
 			waitIdle();
-			setLl(20);setRl(20);
+			setLl(30);setRl(-30);
 			waitIdle();
 		}
 	}
@@ -210,12 +244,12 @@ void updateMotors() {
 void setup() {
 	Serial.begin(DEFAULT_BAUDRATE);
 
-	leftFoot.init(LEFT_FOOT, 40);
-	rightFoot.init(RIGHT_FOOT, 50);
-	leftLeg.init(LEFT_LEG, 55);
-	rightLeg.init(RIGHT_LEG, 75);
+	leftFoot.init(LEFT_FOOT, LEFT_FOOT_ZERO, LEFT_FOOT_RANGE);
+	rightFoot.init(RIGHT_FOOT, RIGHT_FOOT_ZERO, RIGHT_FOOT_RANGE);
+	leftLeg.init(LEFT_LEG, LEFT_LEG_ZERO, LEFT_LEG_RANGE);
+	rightLeg.init(RIGHT_LEG, RIGHT_LEG_ZERO, RIGHT_LEG_RANGE);
 
-	MsTimer2::set(10, updateMotors); // 500ms period
+	MsTimer2::set(1, updateMotors);
 	MsTimer2::start();
 
 	zero();
