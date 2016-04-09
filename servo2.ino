@@ -172,17 +172,13 @@ void zero() {
 
 void bow(int angle) {
 	if (angle < 0) {
-		setLf(-angle);
-		setRf(-angle);
-		waitIdle();
 		setLf(angle);
+		setRf(-2 * angle);
 		waitIdle();
 		setRf(angle);
 	} else {
-		setLf(angle);
-		setRf(angle);
-		waitIdle();
 		setRf(-angle);
+		setLf(2 * angle);
 		waitIdle();
 		setLf(-angle);
 	}
