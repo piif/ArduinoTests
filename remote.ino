@@ -39,13 +39,30 @@ IRrecv My_Receiver(IR_PIN);
 
 typedef struct _key { uint32_t code; char key; } Key;
 Key MakeBlockRemote[] = {
-	{ 0xFFA25D, 'A' }, { 0xFF629D, 'B' }, { 0xFFE21D, 'C' },
-	{ 0xFF22DD, 'D' }, { 0xFF02FD, 'u' }, { 0xFFC23D, 'E' },
-	{ 0xFFE01F, 'l' }, { 0xFFA857, 'x' }, { 0xFF906F, 'r' },
-	{ 0xFF6897, '0' }, { 0xFF9867, 'd' }, { 0xFFB04F, 'F' },
-	{ 0xFF30CF, '1' }, { 0xFF18E7, '2' }, { 0xFF7A85, '3' },
-	{ 0xFF10EF, '4' }, { 0xFF38C7, '5' }, { 0xFF5AA5, '6' },
-	{ 0xFF42BD, '7' }, { 0xFF4AB5, '8' }, { 0xFF52AD, '9' },
+	{ 0xA25D, 'A' }, { 0x629D, 'B' }, { 0xE21D, 'C' },
+	{ 0x22DD, 'D' }, { 0x02FD, 'u' }, { 0xC23D, 'E' },
+	{ 0xE01F, 'l' }, { 0xA857, 'x' }, { 0x906F, 'r' },
+	{ 0x6897, '0' }, { 0x9867, 'd' }, { 0xB04F, 'F' },
+	{ 0x30CF, '1' }, { 0x18E7, '2' }, { 0x7A85, '3' },
+	{ 0x10EF, '4' }, { 0x38C7, '5' }, { 0x5AA5, '6' },
+	{ 0x42BD, '7' }, { 0x4AB5, '8' }, { 0x52AD, '9' },
+	{ 0, 0 }
+};
+Key PhilipsRemote[] = {
+	{ 0xC, 'X' },
+	{ 0x31, 'S' }, { 0x30, 'p' },
+	{ 0x2B, '<' }, { 0x2C, 'P' }, { 0x28, '>' },
+	{ 0x6D, 'R' }, { 0x6E, 'G' }, { 0x6F, 'Y' }, { 0x70, 'B' },
+	{ 0xCC, '?' }, { 0x54, 'H' }, { 0x90, 'A' },
+	{ 0x58, 'u' },
+	{ 0x4D, '-' }, { 0x5A, 'l' }, { 0x5C, 'k' }, { 0x5B, 'r' }, { 0x4C, '+' },
+	{ 0x59, 'b' },
+	{ 0x38, 's' }, { 0x0A, '^' }, { 0x40, 'O' },
+	{ 0x11, 'v' }, { 0x0D, 'M' }, { 0x10, 'V' },
+	{ 0x01, '1' }, { 0x02, '2' }, { 0x03, '3' },
+	{ 0x04, '4' }, { 0x05, '5' }, { 0x06, '6' },
+	{ 0x07, '7' }, { 0x08, '8' }, { 0x09, '9' },
+	{ 0x4B, '_' }, { 0x00, '0' }, { 0x3C, 'T' },
 	{ 0, 0 }
 };
 
@@ -62,6 +79,10 @@ char lookUp(unsigned long code, Key *map) {
 void setup() {
 	Serial.begin(DEFAULT_BAUDRATE);
 
+	pinMode(4, OUTPUT);
+	pinMode(5, OUTPUT);
+	digitalWrite(4, LOW);
+	digitalWrite(5, HIGH);
 	My_Receiver.enableIRIn();
 	My_Receiver.blink13(true);
 	Serial.println("setup ok");
@@ -70,8 +91,10 @@ void setup() {
 void loop() {
 	if (My_Receiver.GetResults(&My_Decoder)) {//wait till it returns true
 		My_Decoder.decode();
-//		My_Decoder.DumpResults();
-		Serial.println(lookUp(My_Decoder.value, MakeBlockRemote));
+		My_Decoder.DumpResults();
+		Serial.println(lookUp(My_Decoder.value & 0xffff, MakeBlockRemote));
+		Serial.println(lookUp(My_Decoder.value & 0xffff, PhilipsRemote));
 		My_Receiver.resume();
 	}
 }
+
