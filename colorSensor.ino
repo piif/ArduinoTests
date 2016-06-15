@@ -5,11 +5,15 @@
 	#include <Arduino.h>
 	// other includes with full pathes
 	// example : #include "led7/led7.h"
+#ifdef INTERACTIVE
 	#include "serialInput/serialInput.h"
+#endif
 #else
 	// other includes with short pathes
 	// example : #include "led7.h"
+#ifdef INTERACTIVE
 	#include "serialInput.h"
+#endif
 #endif
 
 #ifndef DEFAULT_BAUDRATE
@@ -124,17 +128,23 @@ void readColor() {
 	Serial.print(getColorName(currentPrescale, r, g, b, w));
 }
 
+#ifdef INTERACTIVE
 bool doLoop = false;
+#else
+bool doLoop = true;
+#endif
 void loopRead() {
 	doLoop = !doLoop;
 }
 
+#ifdef INTERACTIVE
 InputItem list[] = {
 	{ 'i', 'f', (void *)setSensorPrescale},
 	{ 'c', 'f', (void *)setSensorColor },
 	{ 'r', 'f', (void *)readColor },
 	{ 'l', 'f', (void *)loopRead }
 };
+#endif
 
 
 void setup() {
@@ -147,12 +157,17 @@ void setup() {
 	pinMode(SENSOR_ENABLE, OUTPUT);
 	digitalWrite(SENSOR_ENABLE, LOW);
 	pinMode(SENSOR_OUT, INPUT);
+	setSensorPrescale(PRESCALE_2);
+#ifdef INTERACTIVE
 	registerInput(sizeof(list), list);
+#endif
 	Serial.println("Ready");
 }
 
 void loop() {
+#ifdef INTERACTIVE
 	handleInput();
+#endif
 	if (doLoop) {
 		readColor();
 		delay(500);
