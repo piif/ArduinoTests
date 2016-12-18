@@ -4,6 +4,8 @@
  */
 // TODO : faire une base de temps à partir de millis et calculer le "temps" du prochain beat, pour être plus précis
 
+#include <Arduino.h>
+
 /***** PARTIE OUTPUT *****/
 
 /* le nombre de leds "principale" */
