@@ -8,7 +8,7 @@
 // TODO : read http://forum.arduino.cc/index.php?topic=138168.5
 
 #include <Arduino.h>
-#include "serialInput/serialInput.h"
+#include "serialInput.h"
 
 #ifndef DEFAULT_BAUDRATE
 	#define DEFAULT_BAUDRATE 115200

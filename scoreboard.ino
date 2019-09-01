@@ -7,7 +7,7 @@
 
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
-	#include "serialInput/serialInput.h"
+	#include "serialInput.h"
 #else
 	// other includes with short pathes
 	#include "serialInput.h"

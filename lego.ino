@@ -3,7 +3,7 @@
 	// other includes with full pathes
 	// example : #include "led7/led7.h"
 	#include "Lego/Lego.h"
-	#include "serialInput/serialInput.h"
+	#include "serialInput.h"
 #else
 	// other includes with short pathes
 	#include "serialInput.h"

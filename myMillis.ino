@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "myMillis/myMillis.h"
+#include "myMillis.h"
 
 void setup() {
 	Serial.begin(115200);

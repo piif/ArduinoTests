@@ -1,8 +1,8 @@
 #include <Arduino.h>
-#include "ArduinoTools.h"
-#include "pwm/pwm.h"
+#include "LowLevelTools.h"
+#include "pwm.h"
 #ifdef WITHOUT_MILLIS_FUNCTIONS
-#include "myMillis/myMillis.h"
+#include "myMillis.h"
 #define delay myDelay
 #endif
 

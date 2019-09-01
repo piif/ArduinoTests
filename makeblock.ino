@@ -1,6 +1,6 @@
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
-	#include "serialInput/serialInput.h"
+	#include "serialInput.h"
 	// other includes with full pathes
 	// example : #include "led7/led7.h"
 #else

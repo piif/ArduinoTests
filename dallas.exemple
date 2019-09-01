@@ -94,8 +94,8 @@ struct rtc_regd_struc {
 
 struct rtc_pin_def rtc; //pins for the rtc
 struct rtc_pin_def rtc_tris; //tris for the rtc
-#byte rtc  = 0xF82      //note: no semicolin 0x82=C0 on a 18F452
-#byte rtc_tris = 0xF94  //tris location for port C pin 0
+//byte rtc  = 0xF82      //note: no semicolin 0x82=C0 on a 18F452
+//byte rtc_tris = 0xF94  //tris location for port C pin 0
 #define rtc_tris_r() rtc_tris=0;rtc_tris.ad=0xFF//read data is input
 #define rtc_tris_w() rtc_tris=0;rtc_tris.ad=0//write data is output
 
