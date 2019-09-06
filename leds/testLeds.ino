@@ -8,20 +8,12 @@
 // => il faut driver la boucle rapide par des interruptions pour que la callback puisse se dérouler entre les itérations
 
 
-char *LedMaskToOutputMask[] = {
-	"10z",
-	"z10",
-	"0z1",
-	"01z",
-	"z01",
-	"1z0"
-};
-
 setIntervalTimer animationTimer, displayTimer;
 
-// led   1    2    3    1'   2'   3'
-// mask 0x20 0x10 0x08 0x04 0x02 0x01
-byte leds = 0;
+#define MAX_INTENSITY 15
+// each led intensity required by animation steps
+// values must be between 0 and MAX_INTENSITY
+byte leds[6] = { 0, };
 
 #define LED_1a 0x20
 #define LED_1b 0x10
@@ -35,37 +27,64 @@ byte leds = 0;
 #define OUT_C 0x10
 #define OUT_NOT (~(OUT_A | OUT_B | OUT_C))
 
-long iter=0;
+long iter=0, step = 0;
 
-void animationStep(void *userData, long late, int missed) {
-	static byte bit = 1;
-	static bool on = 1;
+typedef struct animation {
+	setIntervalFunction *callback;
+	long delay;
+	long nbSteps;
+} Animation;
 
-	if (on) {
-		leds |= bit;
+void aStep(void *userData, long late, int missed) {
+	static byte led = 0;
+	static byte on = MAX_INTENSITY;
+
+	leds[led] = on;
+
+	if (led == 5) {
+		led = 0;
+		on = (on == MAX_INTENSITY) ? 0 : MAX_INTENSITY;
 	} else {
-		leds &= ~bit;
+		led++;
 	}
-
-	if (bit == 0x20) {
-		bit = 1;
-		on = !on;
-	} else {
-		bit <<= 1;
-	}
-
 	Serial.println(iter);
-//	if (leds == 1) {
-//		leds = 0x20;
-//	} else {
-//		leds >>= 1;
-//	}
+}
+
+void bStep(void *userData, long late, int missed) {
+	static byte led = 0;
+	leds[led] = 0;
+	if (led == 5) {
+		led = 0;
+	} else {
+		led++;
+	}
+	leds[led] = MAX_INTENSITY;
+}
+
+
+Animation animations[] = {
+	{ aStep, 250, 12 },
+	{ bStep, 250, 6 }
+};
+int currentAnim = -1;
+#define NB_ANIMATIONS (sizeof(animations) / sizeof(Animation))
+
+void startAnim(int index) {
+	currentAnim = index;
+	if (index == -1) {
+		Serial.println("Stop anim");
+		changeInterval(animationTimer, SET_INTERVAL_PAUSED);
+		return;
+	}
+	Serial.print("Start anim ");
+	Serial.println(index);
+	index = index % NB_ANIMATIONS;
+	animationTimer = changeInterval(animationTimer, animations[index].delay, animations[index].callback, NULL);
 }
 
 void displayStep(void *userData, long late, int missed) {
 	static byte step  = 0;
 	byte portd = PORTD & OUT_NOT, ddrd = DDRD & OUT_NOT; // clear bits 3, 4 & 5 to copy to real PORTD and DDRD
-	char A,B,C;
 
 	iter++;
 
@@ -73,44 +92,45 @@ void displayStep(void *userData, long late, int missed) {
 	case 0:
 		// A = '1';
 		portd |= OUT_A; ddrd |= OUT_A;
-		// B = (leds & 0x20) ? '0' : 'z';
-		if (leds & LED_1a) {
+		// B = leds[0] ? '0' : 'z';
+		if (leds[0]) {
 			ddrd |= OUT_B;
 		} // else ddrd already cleared
-		// C = (leds & 0x01) ? '0' : 'z';
-		if (leds & LED_3b) {
+		// C = leds[5] ? '0' : 'z';
+		if (leds[5]) {
 			ddrd |= OUT_C;
 		}
+		step = 1;
 	break;
 	case 1:
-		// A = (leds & 0x04) ? '0' : 'z';
-		if (leds & LED_1b) {
+		// A = leds[1] ? '0' : 'z';
+		if (leds[1]) {
 			ddrd |= OUT_A;
 		}
 		// B = '1';
 		portd |= OUT_B; ddrd |= OUT_B;
-		// C = (leds & 0x10) ? '0' : 'z';
-		if (leds & LED_2a) {
+		// C = leds[2] ? '0' : 'z';
+		if (leds[2]) {
 			ddrd |= OUT_C;
 		}
+		step = 2;
 	break;
 	case 2:
-		// A = (leds & 0x08) ? '0' : 'z';
-		if (leds & LED_3a) {
+		// A = leds[4] ? '0' : 'z';
+		if (leds[4]) {
 			ddrd |= OUT_A;
 		}
-		// B = (leds & 0x02) ? '0' : 'z';
-		if (leds & LED_2b) {
+		// B = leds[3] ? '0' : 'z';
+		if (leds[3]) {
 			ddrd |= OUT_B;
 		}
 		// C = '1';
 		portd |= OUT_C; ddrd |= OUT_C;
+		step = 0;
 	break;
 	}
 	PORTD = portd;
 	DDRD  = ddrd;
-
-	step = (step + 1) % 3;
 }
 
 // This part of code is used to get input like "10z" and set pins to
@@ -119,7 +139,6 @@ void displayStep(void *userData, long late, int missed) {
 #define MAX_BUFFER 4
 char buffer[MAX_BUFFER];
 int index = 0;
-bool anim = true;
 
 void parseBit(char state, byte pin) {
 	switch(state) {
@@ -148,9 +167,11 @@ void parseMask(char *buffer) {
 	if (buffer[0]=='?') {
 		Serial.println("ping...");
 		return;
-	} else if (buffer[0]=='a') {
-		anim = !anim;
+	} else if (buffer[0]>='a' && buffer[0]<'z') {
+		startAnim(buffer[0]-'a');
 		return;
+	} else {
+		startAnim(-1);
 	}
 
 	parseBit(buffer[0], 2);
@@ -184,15 +205,17 @@ void readMask() {
 void setup() {
 	Serial.begin(115200);
 
+	// initialize animation timer with empty data
+	animationTimer = setInterval(SET_INTERVAL_PAUSED, NULL, NULL);
 	displayTimer = setInterval(2, displayStep, NULL);
-	animationTimer = setInterval(500, animationStep, NULL);
+	startAnim(0);
 
 	Serial.println("ready");
 }
 
 void loop() {
 	readMask();
-	if (anim) {
+	if (currentAnim >= 0) {
 		setIntervalStep();
 	}
 }
