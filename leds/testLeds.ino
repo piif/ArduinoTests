@@ -7,10 +7,29 @@
 // et qui reçoit un compteur en paramètre
 // => il faut driver la boucle rapide par des interruptions pour que la callback puisse se dérouler entre les itérations
 
+/**
+ * à revoir en PWM, sur les sortie 9, 10, 11 = portb bits 1, 2 et 3
+ *  9 = OCR1A
+ * 10 = OCR1B
+ * 11 = OCR2A
+ * - prescaler à 1
+ * - fast pwm jusque max pour timer 2, 256 pour timer 1 (16 bits)
+ * - output sur 1A, 1B et 2A
+ * COM1A1:0 = 11 , COM1B1:0 = 11 , WGM13:0 = 1010
+ * TCCR1A = 1111xx00 , TCCR1B = 00x00001 , TCCR1C = 11xxxxxx
+ *
+ * COM2A1:0 = 11 , COM2B1:0 = 00 , WGM23:0 = 1010
+ * TCCR2A = 1100xx00 , TCCR2B = 11xx0001
+ *
+ * TODO : tester les sorties PWM "en dur" avec une valeur donnée
+ */
+
 
 setIntervalTimer animationTimer, displayTimer;
 
-#define MAX_INTENSITY 15
+#define WITH_PWM
+
+#define MAX_INTENSITY 255
 // each led intensity required by animation steps
 // values must be between 0 and MAX_INTENSITY
 byte leds[6] = { 0, };
@@ -22,22 +41,74 @@ byte leds[6] = { 0, };
 #define LED_3a 0x02
 #define LED_3b 0x01
 
-#define OUT_A 0x04
-#define OUT_B 0x08
-#define OUT_C 0x10
+#define PIN_A 9
+#define PIN_B 10
+#define PIN_C 11
+
+#define OUT_A 0x02
+#define OUT_B 0x04
+#define OUT_C 0x08
+
+#define OCR_OUT_A OCR1A
+#define OCR_OUT_B OCR1B
+#define OCR_OUT_C OCR2A
+
 #define OUT_NOT (~(OUT_A | OUT_B | OUT_C))
 
-long iter=0, step = 0;
-
 typedef struct animation {
-	setIntervalFunction *callback;
+	bool (*callback)(long, byte leds[]);
 	long delay;
 	long nbSteps;
 } Animation;
 
-void aStep(void *userData, long late, int missed) {
+void rotateRight() {
+	byte tmp = leds[5];
+	leds[5] = leds[4];
+	leds[4] = leds[3];
+	leds[3] = leds[2];
+	leds[2] = leds[1];
+	leds[1] = leds[0];
+	leds[0] = tmp;
+}
+
+bool aStep(long step, byte leds[]) {
+	static byte led = 0;
+
+	if (step == 0) {
+		leds[0] = MAX_INTENSITY;
+		leds[1] = MAX_INTENSITY >> 3;
+		leds[2] = 0;
+		leds[3] = 0;
+		leds[4] = 0;
+		leds[5] = 0;
+		return true;
+	}
+	rotateRight();
+
+//	leds[led] = 0;
+//	if (led == 5) {
+//		led = 0;
+//	} else {
+//		led++;
+//	}
+//	leds[led] = MAX_INTENSITY;
+
+	return true;
+}
+
+bool bStep(long step, byte leds[]) {
 	static byte led = 0;
 	static byte on = MAX_INTENSITY;
+
+	if (step == 0) {
+		leds[0] = 0;
+		leds[1] = 0;
+		leds[2] = 0;
+		leds[3] = 0;
+		leds[4] = 0;
+		leds[5] = 0;
+		return true;
+	}
 
 	leds[led] = on;
 
@@ -47,27 +118,83 @@ void aStep(void *userData, long late, int missed) {
 	} else {
 		led++;
 	}
-	Serial.println(iter);
+	return true;
 }
 
-void bStep(void *userData, long late, int missed) {
-	static byte led = 0;
-	leds[led] = 0;
-	if (led == 5) {
-		led = 0;
-	} else {
-		led++;
+bool cStep(long step, byte leds[]) {
+	if (step == 0) {
+		leds[0] = 0;
+		leds[1] = 0;
+		leds[2] = 0;
+		leds[3] = 0;
+		leds[4] = 0;
+		leds[5] = 0;
+		return true;
 	}
-	leds[led] = MAX_INTENSITY;
+
+	leds[0]++;
+	leds[1] = leds[0];
+	leds[2] = leds[0];
+	leds[3] = leds[0];
+	leds[4] = leds[0];
+	leds[5] = leds[0];
+
+//	if (leds[0] == 0) {
+//		Serial.println(millis());
+//	}
+	return true;
 }
 
+bool dStep(long step, byte leds[]) {
+	if (step == 0) {
+		leds[0] = 0;
+		leds[1] = MAX_INTENSITY >> 4;
+		leds[2] = MAX_INTENSITY >> 2;
+		leds[3] = MAX_INTENSITY;
+		leds[4] = MAX_INTENSITY >> 2;
+		leds[5] = MAX_INTENSITY >> 4;
+	} else {
+		rotateRight();
+	}
+	return true;
+}
+
+bool eStep(long step, byte leds[]) {
+	if (step == 0) {
+		leds[0] = 0;
+		leds[1] = 20;
+		leds[2] = 40;
+		leds[3] = 60;
+		leds[4] = 80;
+		leds[5] = 100;
+		return true;
+	}
+
+	leds[0]++;
+	leds[1]++;
+	leds[2]++;
+	leds[3]++;
+	leds[4]++;
+	leds[5]++;
+
+//	if (leds[0] == 0) {
+//		Serial.println(millis());
+//	}
+	return true;
+}
 
 Animation animations[] = {
-	{ aStep, 250, 12 },
-	{ bStep, 250, 6 }
+	{ aStep, 250,   6 },
+	{ bStep, 100,  12 },
+	{ cStep,   5, 256 },
+	{ dStep, 100,   6 },
+	{ eStep,   5, 256 }
 };
 int currentAnim = -1;
 #define NB_ANIMATIONS (sizeof(animations) / sizeof(Animation))
+
+long animationStep = 0;
+long displaySubStep = 0;
 
 void startAnim(int index) {
 	currentAnim = index;
@@ -79,58 +206,181 @@ void startAnim(int index) {
 	Serial.print("Start anim ");
 	Serial.println(index);
 	index = index % NB_ANIMATIONS;
-	animationTimer = changeInterval(animationTimer, animations[index].delay, animations[index].callback, NULL);
+	animationStep = 0;
+	displaySubStep = 0;
+	animationTimer = changeInterval(animationTimer, animations[index].delay);
 }
 
-void displayStep(void *userData, long late, int missed) {
-	static byte step  = 0;
-	byte portd = PORTD & OUT_NOT, ddrd = DDRD & OUT_NOT; // clear bits 3, 4 & 5 to copy to real PORTD and DDRD
 
-	iter++;
+void animationStepCallback(void *userData, long late, int missed) {
+	if (currentAnim >= 0) {
+		(animations[currentAnim].callback)(animationStep, leds);
+		animationStep++;
+	}
+}
 
-	switch(step) {
+void displayStepCallback_6(void *userData, long late, int missed) {
+	byte port = PORTB & OUT_NOT, ddr = DDRB & OUT_NOT; // clear bits 3, 4 & 5 to copy to real PORTD and DDRD
+
+	switch(displaySubStep) {
 	case 0:
 		// A = '1';
-		portd |= OUT_A; ddrd |= OUT_A;
+		port |= OUT_A; OCR_OUT_A = 0; ddr |= OUT_A;
+
 		// B = leds[0] ? '0' : 'z';
-		if (leds[0]) {
-			ddrd |= OUT_B;
+		if (leds[0] > 0) {
+			ddr |= OUT_B;
+#ifdef WITH_PWM
+			OCR_OUT_B = leds[0];
+#endif
 		} // else ddrd already cleared
+
+		displaySubStep = 1;
+	break;
+	case 1:
+		// A = '1';
+		port |= OUT_A; OCR_OUT_A = 0; ddr |= OUT_A;
+
 		// C = leds[5] ? '0' : 'z';
-		if (leds[5]) {
-			ddrd |= OUT_C;
+		if (leds[5] > 0) {
+			ddr |= OUT_C;
+#ifdef WITH_PWM
+			OCR_OUT_C = leds[5];
+#endif
 		}
-		step = 1;
+		displaySubStep = 2;
+	break;
+	case 2:
+		// B = '1';
+		port |= OUT_B; OCR_OUT_B = 0; ddr |= OUT_B;
+
+		// A = leds[1] ? '0' : 'z';
+		if (leds[1] > 0) {
+			ddr |= OUT_A;
+#ifdef WITH_PWM
+			OCR_OUT_A = leds[1];
+#endif
+		}
+
+		displaySubStep = 3;
+	break;
+	case 3:
+		// B = '1';
+		port |= OUT_B; OCR_OUT_B = 0; ddr |= OUT_B;
+
+		// C = leds[2] ? '0' : 'z';
+		if (leds[2] > 0) {
+			ddr |= OUT_C;
+#ifdef WITH_PWM
+			OCR_OUT_C = leds[2];
+#endif
+		}
+		displaySubStep = 4;
+	break;
+	case 4:
+		// C = '1';
+		port |= OUT_C; OCR_OUT_C = 0; ddr |= OUT_C;
+
+		// A = leds[4] ? '0' : 'z';
+		if (leds[4] > 0) {
+			ddr |= OUT_A;
+#ifdef WITH_PWM
+			OCR_OUT_A = leds[4];
+#endif
+		}
+
+		displaySubStep = 5;
+	break;
+	case 5:
+		// C = '1';
+		port |= OUT_C; OCR_OUT_C = 0; ddr |= OUT_C;
+
+		// B = leds[3] ? '0' : 'z';
+		if (leds[3] > 0) {
+			ddr |= OUT_B;
+#ifdef WITH_PWM
+			OCR_OUT_B = leds[3];
+#endif
+		}
+
+		displaySubStep = 0;
+	break;
+	}
+	PORTB = port;
+	DDRB  = ddr;
+}
+
+void displayStepCallback_3(void *userData, long late, int missed) {
+	byte port = PORTB & OUT_NOT, ddr = DDRB & OUT_NOT; // clear bits 3, 4 & 5 to copy to real PORTD and DDRD
+
+	switch(displaySubStep) {
+	case 0:
+		// A = '1';
+		port |= OUT_A; OCR_OUT_A = 0; ddr |= OUT_A;
+
+		// B = leds[0] ? '0' : 'z';
+		if (leds[0] > 0) {
+			ddr |= OUT_B;
+#ifdef WITH_PWM
+			OCR_OUT_B = leds[0];
+#endif
+		} // else ddrd already cleared
+
+		// C = leds[5] ? '0' : 'z';
+		if (leds[5] > 0) {
+			ddr |= OUT_C;
+#ifdef WITH_PWM
+			OCR_OUT_C = leds[5];
+#endif
+		}
+		displaySubStep = 1;
 	break;
 	case 1:
 		// A = leds[1] ? '0' : 'z';
-		if (leds[1]) {
-			ddrd |= OUT_A;
+		if (leds[1] > 0) {
+			ddr |= OUT_A;
+#ifdef WITH_PWM
+			OCR_OUT_A = leds[1];
+#endif
 		}
+
 		// B = '1';
-		portd |= OUT_B; ddrd |= OUT_B;
+		port |= OUT_B; OCR_OUT_B = 0; ddr |= OUT_B;
+
 		// C = leds[2] ? '0' : 'z';
-		if (leds[2]) {
-			ddrd |= OUT_C;
+		if (leds[2] > 0) {
+			ddr |= OUT_C;
+#ifdef WITH_PWM
+			OCR_OUT_C = leds[2];
+#endif
 		}
-		step = 2;
+		displaySubStep = 2;
 	break;
 	case 2:
 		// A = leds[4] ? '0' : 'z';
-		if (leds[4]) {
-			ddrd |= OUT_A;
+		if (leds[4] > 0) {
+			ddr |= OUT_A;
+#ifdef WITH_PWM
+			OCR_OUT_A = leds[4];
+#endif
 		}
+
 		// B = leds[3] ? '0' : 'z';
-		if (leds[3]) {
-			ddrd |= OUT_B;
+		if (leds[3] > 0) {
+			ddr |= OUT_B;
+#ifdef WITH_PWM
+			OCR_OUT_B = leds[3];
+#endif
 		}
+
 		// C = '1';
-		portd |= OUT_C; ddrd |= OUT_C;
-		step = 0;
+		port |= OUT_C; OCR_OUT_C = 0; ddr |= OUT_C;
+
+		displaySubStep = 0;
 	break;
 	}
-	PORTD = portd;
-	DDRD  = ddrd;
+	PORTB = port;
+	DDRB  = ddr;
 }
 
 // This part of code is used to get input like "10z" and set pins to
@@ -146,19 +396,14 @@ void parseBit(char state, byte pin) {
 	case '-':
 		pinMode(pin, OUTPUT);
 		digitalWrite(pin, 0);
-		pinMode(pin + 3, OUTPUT);
-		digitalWrite(pin + 3, 0);
 	break;
 	case '1':
 	case '+':
 		pinMode(pin, OUTPUT);
 		digitalWrite(pin, 1);
-		pinMode(pin + 3, OUTPUT);
-		digitalWrite(pin + 3, 1);
 	break;
 	default:
 		pinMode(pin, INPUT);
-		pinMode(pin + 3, INPUT);
 	break;
 	}
 }
@@ -174,9 +419,9 @@ void parseMask(char *buffer) {
 		startAnim(-1);
 	}
 
-	parseBit(buffer[0], 2);
-	parseBit(buffer[1], 3);
-	parseBit(buffer[2], 4);
+	parseBit(buffer[0], PIN_A);
+	parseBit(buffer[1], PIN_B);
+	parseBit(buffer[2], PIN_C);
 }
 
 void readMask() {
@@ -206,8 +451,17 @@ void setup() {
 	Serial.begin(115200);
 
 	// initialize animation timer with empty data
-	animationTimer = setInterval(SET_INTERVAL_PAUSED, NULL, NULL);
-	displayTimer = setInterval(2, displayStep, NULL);
+	animationTimer = setInterval(SET_INTERVAL_PAUSED, animationStepCallback, NULL);
+	displayTimer = setInterval(2, displayStepCallback_6, NULL);
+
+#ifdef WITH_PWM
+	TCCR1A = 0xF1; TCCR1B = 0x09; TCCR1C = 0xC0;
+	TCCR2A = 0xC3; TCCR2B = 0xC1;
+//	OCR_OUT_A = 50;
+//	OCR_OUT_B = 128;
+//	OCR_OUT_C = 200;
+//	DDRB |= OUT_A | OUT_B | OUT_C;
+#endif
 	startAnim(0);
 
 	Serial.println("ready");
