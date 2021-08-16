@@ -3,7 +3,7 @@
 
 // Essayer avec 6 valeurs sur 4 bits pour gérer un pseudo PWM
 // une boucle à 1ms qui compte de 0 à 15 et pour chaque valeur on passe à 0 ou 1 selon qu'on a passé la valeur
-// + une fonction callback d'animation appelée Pendant les 16 tours, pour préparer les valeurs de l'itération suivante
+// + une fonction callback d'animation appelée pendant les 16 tours, pour préparer les valeurs de l'itération suivante
 // et qui reçoit un compteur en paramètre
 // => il faut driver la boucle rapide par des interruptions pour que la callback puisse se dérouler entre les itérations
 
@@ -27,19 +27,13 @@
 
 setIntervalTimer animationTimer, displayTimer;
 
+// undef to use on/off mode , def to use variable intensity thru PWM
 #define WITH_PWM
 
 #define MAX_INTENSITY 255
 // each led intensity required by animation steps
 // values must be between 0 and MAX_INTENSITY
 byte leds[6] = { 0, };
-
-#define LED_1a 0x20
-#define LED_1b 0x10
-#define LED_2a 0x08
-#define LED_2b 0x04
-#define LED_3a 0x02
-#define LED_3b 0x01
 
 #define PIN_A 9
 #define PIN_B 10
