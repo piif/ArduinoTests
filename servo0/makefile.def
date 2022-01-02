@@ -1,0 +1,5 @@
+BOARD := arduino:avr:uno
+ARDDUDE_OPTIONS := -l cr -o raw -d
+PORT := /dev/ttyUSB0
+LIBRARY_PATH := ~/.arduino15/packages/MightyCore/hardware/avr/2.1.3/libraries/Servo ~/GitHub/piif/ArduinoTools
+

@@ -14,7 +14,7 @@
 Servo motor;
 
 void set(int v) {
-	motor.write(v);
+	motor.writeMicroseconds(v);
 }
 
 InputItem inputs[] = {
