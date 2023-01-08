@@ -20,29 +20,76 @@ ensuite :
 */
 
 /* segment selection pins (-) */
-#define Sa  6
-#define Sb  7
-#define Sc 10
-#define Sd 11
-#define Se 12
-#define Sf  8
-#define Sg  9
-#define Sp  2
+#define Sa  6 // PD6
+#define Sb  7 // PD7
+#define Sc 10 // PB2
+#define Sd 11 // PB3
+#define Se 12 // PB4
+#define Sf  8 // PB0
+#define Sg  9 // PB1
+#define Sp  2 // PD2
+
+// set segment bit to 0
+#define MASK_A  Dbits &= ~(1 << 6)
+#define MASK_B  Dbits &= ~(1 << 7)
+#define MASK_C  Bbits &= ~(1 << 2)
+#define MASK_D  Bbits &= ~(1 << 3)
+#define MASK_E  Bbits &= ~(1 << 4)
+#define MASK_F  Bbits &= ~(1 << 0)
+#define MASK_G  Bbits &= ~(1 << 1)
+#define MASK_P  Dbits &= ~(1 << 2)
 
 /* digit selection pins (+) */
-#define D0  5
-#define D1  4
-#define D2  3
+#define D0  5 // PD5
+#define D1  4 // PD4
+#define D2  3 // PD3
 
-#define ButtonUp      A3
-#define ButtonUpGnd   A5
-#define ButtonDown    A0
-#define ButtonDownGnd A2
+// set digit bit to 1
+#define MASK_D0  Dbits |= (1 << 5)
+#define MASK_D1  Dbits |= (1 << 4)
+#define MASK_D2  Dbits |= (1 << 3)
+
+// digit bits
+#define B_DIGITS 0x00
+#define D_DIGITS 0x38
+
+// segment bits
+#define B_SEGMENTS 0x1F
+#define D_SEGMENTS 0xC4
+
+// other bits
+#define B_OTHER 0xE0
+#define D_OTHER 0x03
+
+#define ButtonUp      A0
+#define ButtonDown    A1
 
 #define Speaker    13
 
+// current status
+enum {
+    OFF,
+    RUNNING,
+    RINGING,
+    STOPPING
+} status = OFF;
+
+// value currently displayed (-1 = off)
+int display = -1;
+byte displayDigits[] = { 0, 0, 0 };
+
+// next millis value for display change
+unsigned long timerNext=0;
+
+// buttons state
+byte BDown = 0, BUp = 0;
+// last time buttons state changed
+unsigned long buttonLastChanged=0;
+// button bounce timeout
+#define BounceDelay 100
+
 byte mapSegments[] = {
-	//tRrblLmp
+	//abcdefgp
 	0b11111100, // 0
 	0b01100000, // 1
 	0b11011010, // 2
@@ -56,58 +103,60 @@ byte mapSegments[] = {
     0, 0, 0, 0, 0, 0
 };
 
+void setDisplay(int value) {
+    display = value;
+    if (value == -1) {
+        return;
+    }
+    displayDigits[2] = display % 10;
+    displayDigits[1] = (display/10) % 10;
+    displayDigits[0] = (display/100) % 10;
+}
+
 void outputDigit(byte value, byte digit, boolean point) {
     byte map = mapSegments[value];
     if (point) {
         map |= 1;
     }
 
-    digitalWrite(D0, 0);
-    digitalWrite(D1, 0);
-    digitalWrite(D2, 0);
-    digitalWrite(Sa, !(map & 0x80));
-    digitalWrite(Sb, !(map & 0x40));
-    digitalWrite(Sc, !(map & 0x20));
-    digitalWrite(Sd, !(map & 0x10));
-    digitalWrite(Se, !(map & 0x08));
-    digitalWrite(Sf, !(map & 0x04));
-    digitalWrite(Sg, !(map & 0x02));
-    digitalWrite(Sp, !(map & 0x01));
+    byte Bbits = (PORTB & B_OTHER) | B_SEGMENTS, Dbits = (PORTD & D_OTHER) | D_SEGMENTS;
+
+    if (map & 0x80) MASK_A;
+    if (map & 0x40) MASK_B;
+    if (map & 0x20) MASK_C;
+    if (map & 0x10) MASK_D;
+    if (map & 0x08) MASK_E;
+    if (map & 0x04) MASK_F;
+    if (map & 0x02) MASK_G;
+    if (map & 0x01) MASK_P;
 
     switch(digit) {
-        case 0: digitalWrite(D0, 1);
+        case 0: MASK_D0;
         break;
-        case 1: digitalWrite(D1, 1);
+        case 1: MASK_D1;
         break;
-        case 2: digitalWrite(D2, 1);
+        case 2: MASK_D2;
         break;
     }
+    PORTB = Bbits; PORTD = Dbits;
 }
-
-int display=1;
 
 void updateDisplay(unsigned long now) {
-    static byte digit = 0;
-    byte value;
-    switch(digit) {
-        case 2: value=display % 10;
-        break;
-        case 1: value=(display/10) % 10;
-        break;
-        case 0: value=(display/100) % 10;
-        break;
+    if (status == OFF) {
+        // PORTB &= ~B_DIGITS; useless since B_DIGITS==0
+        PORTD &= ~D_DIGITS;
+        return;
     }
-    outputDigit(value, digit, digit == 0);
+
+    static byte digit = 0;
+    outputDigit(displayDigits[digit], digit, digit == 0);
     digit = (digit + 1) % 3;
 }
-
-byte BDown = 0, BUp = 0;
-unsigned long buttonLastChanged=0;
-#define BounceDelay 100
 
 void updateButtons(unsigned long now) {
     boolean mustBeep=0;
     if (buttonLastChanged==0 || now>buttonLastChanged+BounceDelay) {
+        buttonLastChanged = now;
         byte newBDown = !digitalRead(ButtonDown);
         byte newBUp = !digitalRead(ButtonUp);
         if (newBDown != BDown) {
@@ -115,9 +164,9 @@ void updateButtons(unsigned long now) {
             if (BDown==1) {
                 mustBeep=1;
                 if (display == 0) {
-                    display= 999;
+                    setDisplay(999);
                 } else {
-                    display--;
+                    setDisplay(display-1);
                 }
             }
         }
@@ -126,9 +175,9 @@ void updateButtons(unsigned long now) {
             if (BUp==1) {
                 mustBeep=1;
                 if (display == 999) {
-                    display= 0;
+                    setDisplay(0);
                 } else {
-                    display++;
+                    setDisplay(display+1);
                 }
             }
         }
@@ -157,28 +206,18 @@ void setup() {
 	pinMode(ButtonDown,    INPUT_PULLUP);
 	pinMode(ButtonUp,      INPUT_PULLUP);
 
-    // temporary trick to wire switches etween 2 nano pins
-	pinMode(ButtonDownGnd, OUTPUT);
-    digitalWrite(ButtonDownGnd, 0);
-	pinMode(ButtonUpGnd,   OUTPUT);
-    digitalWrite(ButtonUpGnd,   0);
-
 	pinMode(Speaker, OUTPUT);
 
     tic= millis();
+
+    status = RUNNING;
+    setDisplay(0);
 }
 
-
+// TODO : drive thru timer interrupts any 10 millis ?
 void loop() {
     // outputDigit(8, 1, 1);
     unsigned long tac = millis();
     updateButtons(tac);
     updateDisplay(tac);
-    // if (tac > tic + 500) {
-    //     tic= tac;
-    //     display++;
-    //     if (display > 9999) {
-    //         display = 1;
-    //     }
-    // }
 }
