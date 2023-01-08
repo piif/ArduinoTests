@@ -1,5 +1,7 @@
 #include <Arduino.h>
+// #include <avr/boot.h>
 
+// for debug purpose (my target nano serial port is out of order)
 #define HAVE_SERIAL
 
 /*
@@ -32,14 +34,14 @@ ensuite :
 #define S_P  2 // PD2
 
 // set segment bit to 0
-#define MASK_A  Dbits &= ~(1 << 6)
-#define MASK_B  Dbits &= ~(1 << 7)
-#define MASK_C  Bbits &= ~(1 << 2)
-#define MASK_D  Bbits &= ~(1 << 3)
-#define MASK_E  Bbits &= ~(1 << 4)
-#define MASK_F  Bbits &= ~(1 << 0)
-#define MASK_G  Bbits &= ~(1 << 1)
-#define MASK_P  Dbits &= ~(1 << 2)
+#define MASK_A(Bbits, DBits)  Dbits &= ~(1 << 6)
+#define MASK_B(Bbits, DBits)  Dbits &= ~(1 << 7)
+#define MASK_C(Bbits, DBits)  Bbits &= ~(1 << 2)
+#define MASK_D(Bbits, DBits)  Bbits &= ~(1 << 3)
+#define MASK_E(Bbits, DBits)  Bbits &= ~(1 << 4)
+#define MASK_F(Bbits, DBits)  Bbits &= ~(1 << 0)
+#define MASK_G(Bbits, DBits)  Bbits &= ~(1 << 1)
+#define MASK_P(Bbits, DBits)  Dbits &= ~(1 << 2)
 
 /* digit selection pins (+) */
 #define D0  5 // PD5
@@ -47,9 +49,9 @@ ensuite :
 #define D2  3 // PD3
 
 // set digit bit to 1
-#define MASK_D0  Dbits |= (1 << 5)
-#define MASK_D1  Dbits |= (1 << 4)
-#define MASK_D2  Dbits |= (1 << 3)
+#define MASK_D0(Bbits, DBits)  Dbits |= (1 << 5)
+#define MASK_D1(Bbits, DBits)  Dbits |= (1 << 4)
+#define MASK_D2(Bbits, DBits)  Dbits |= (1 << 3)
 
 // digit bits
 #define B_DIGITS 0x00
@@ -81,6 +83,8 @@ enum {
 // value currently displayed (-1 = off)
 int display = -1;
 byte displaySegments[] = { 0, 0, 0 };
+byte displayPortB[] = { 0, 0, 0 };
+byte displayPortD[] = { 0, 0, 0 };
 
 // next millis value for display change
 unsigned long timerNext=0;
@@ -114,49 +118,58 @@ byte mapSegments[] = {
 
 void setDisplay(int value) {
     display = value;
+    byte segments[] = { 0, 0, 0 };
+
     // TODO : precompute B & D instead of segments
     if (value == -1) { // off
-        displaySegments[0] = 0;
-        displaySegments[1] = 0;
-        displaySegments[2] = 0;
+        segments[0] = 0;
+        segments[1] = 0;
+        segments[2] = 0;
     } else if (value == -2) { // dots only
-        displaySegments[0] = mapSegments[10];
-        displaySegments[1] = mapSegments[10];
-        displaySegments[2] = mapSegments[10];
+        segments[0] = mapSegments[10];
+        segments[1] = mapSegments[10];
+        segments[2] = mapSegments[10];
     } else if (value == -3) { // all on
-        displaySegments[0] = 0xFF;
-        displaySegments[1] = 0xFF;
-        displaySegments[2] = 0xFF;
+        segments[0] = 0xFF;
+        segments[1] = 0xFF;
+        segments[2] = 0xFF;
     } else {
-        displaySegments[0] = mapSegments[(display/100) % 10] | 1;
-        displaySegments[1] = mapSegments[(display/10) % 10];
-        displaySegments[2] = mapSegments[display % 10];
+        segments[0] = mapSegments[(display/100) % 10] | 1;
+        segments[1] = mapSegments[(display/10) % 10];
+        segments[2] = mapSegments[display % 10];
     }
+    prepareDigit(0, segments[0]);
+    prepareDigit(1, segments[1]);
+    prepareDigit(2, segments[2]);
+}
+
+void prepareDigit(byte digit, byte segments) {
+    byte Bbits = B_SEGMENTS, Dbits = (PORTD & D_OTHER) | D_SEGMENTS;
+
+    if (segments & 0x80) MASK_A(Bbits, DBits);
+    if (segments & 0x40) MASK_B(Bbits, DBits);
+    if (segments & 0x20) MASK_C(Bbits, DBits);
+    if (segments & 0x10) MASK_D(Bbits, DBits);
+    if (segments & 0x08) MASK_E(Bbits, DBits);
+    if (segments & 0x04) MASK_F(Bbits, DBits);
+    if (segments & 0x02) MASK_G(Bbits, DBits);
+    if (segments & 0x01) MASK_P(Bbits, DBits);
+
+    switch(digit) {
+        case 0: MASK_D0(Bbits, DBits);
+        break;
+        case 1: MASK_D1(Bbits, DBits);
+        break;
+        case 2: MASK_D2(Bbits, DBits);
+        break;
+    }
+    displayPortB[digit] = Bbits;
+    displayPortD[digit] = Dbits;
 }
 
 void outputDigit(byte digit) {
-    byte map = displaySegments[digit];
-
-    byte Bbits = (PORTB & B_OTHER) | B_SEGMENTS, Dbits = (PORTD & D_OTHER) | D_SEGMENTS;
-
-    if (map & 0x80) MASK_A;
-    if (map & 0x40) MASK_B;
-    if (map & 0x20) MASK_C;
-    if (map & 0x10) MASK_D;
-    if (map & 0x08) MASK_E;
-    if (map & 0x04) MASK_F;
-    if (map & 0x02) MASK_G;
-    if (map & 0x01) MASK_P;
-
-    switch(digit) {
-        case 0: MASK_D0;
-        break;
-        case 1: MASK_D1;
-        break;
-        case 2: MASK_D2;
-        break;
-    }
-    PORTB = Bbits; PORTD = Dbits;
+    PORTB = (PORTB & B_OTHER) | displayPortB[digit];
+    PORTD = (PORTD & D_OTHER) | displayPortD[digit];
 }
 
 void updateDisplay() {
@@ -173,15 +186,16 @@ void updateDisplay() {
 
 void updateRing(unsigned long now) {
     if (ring == 0) {
+        noTone(SPEAKER);
         status = STOPPING;
         timerNext = now + 2500;
         setDisplay(-2);       
     } else {
         if (ring & 1) {
-            // TODO : sound on
+            tone(SPEAKER, 1000);
             setDisplay(-3);
         } else {
-            // TODO : sound off
+            noTone(SPEAKER);
             setDisplay(-1);
         }
         timerNext = now + RING_LENGTH;
@@ -261,6 +275,9 @@ void setup() {
 
 	pinMode(SPEAKER, OUTPUT);
 #ifdef HAVE_SERIAL
+	// Serial.print("Lfuse "); Serial.println(boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS), HEX);
+	// Serial.print("Hfuse "); Serial.println(boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS), HEX);
+	// Serial.print("Efuse "); Serial.println(boot_lock_fuse_bits_get(GET_EXTENDED_FUSE_BITS), HEX);
     Serial.println("Setup OK");
 #endif
 }
