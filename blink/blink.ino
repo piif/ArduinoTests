@@ -8,6 +8,11 @@
 	#endif
 #endif
 
+// #define TEST_SERIAL
+
+#ifdef TEST_SERIAL
+#define DEFAULT_BAUDRATE 19200
+#endif
 
 //TODO : comprendre de ou sort le CORE_DIR dans le makefile de arddude/target/sanguino
 
@@ -20,21 +25,26 @@
 #define PERIOD 250
 
 void setup(void) {
-#if !defined __AVR_ATtinyX5__
+#ifdef TEST_SERIAL
 	Serial.begin(DEFAULT_BAUDRATE);
 #endif
 
 	pinMode(LED, OUTPUT);
 
 	digitalWrite(LED, LOW);
+#ifdef TEST_SERIAL
+	Serial.println("ready.");
+#endif
 }
 
 int count = 0;
 void loop() {
-	delay(PERIOD);
-	digitalWrite(LED, HIGH);
-//	Serial.print("count = ");Serial.println(count++);
 	delay(PERIOD*3);
+	digitalWrite(LED, HIGH);
+#ifdef TEST_SERIAL
+	Serial.print("count = ");Serial.println(count++);
+#endif
+	delay(PERIOD);
 	digitalWrite(LED, LOW);
 }
 
