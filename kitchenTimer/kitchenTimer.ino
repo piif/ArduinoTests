@@ -20,25 +20,26 @@ ensuite :
 */
 
 /* segment selection pins (-) */
-#define Sa  2
-#define Sb  3
-#define Sc  4
-#define Sd  5
-#define Se  6
-#define Sf  7
-#define Sg  8
-#define Sp 13
+#define Sa  6
+#define Sb  7
+#define Sc 10
+#define Sd 11
+#define Se 12
+#define Sf  8
+#define Sg  9
+#define Sp  2
 
 /* digit selection pins (+) */
-#define D0  9
-#define D1 10
-#define D2 11
-#define D3 12
+#define D0  5
+#define D1  4
+#define D2  3
 
-#define ButtonUp   A0
-#define ButtonDown A1
+#define ButtonUp      A3
+#define ButtonUpGnd   A5
+#define ButtonDown    A0
+#define ButtonDownGnd A2
 
-#define Speaker    A5
+#define Speaker    13
 
 byte mapSegments[] = {
 	//tRrblLmp
@@ -64,7 +65,6 @@ void outputDigit(byte value, byte digit, boolean point) {
     digitalWrite(D0, 0);
     digitalWrite(D1, 0);
     digitalWrite(D2, 0);
-    digitalWrite(D3, 0);
     digitalWrite(Sa, !(map & 0x80));
     digitalWrite(Sb, !(map & 0x40));
     digitalWrite(Sc, !(map & 0x20));
@@ -81,8 +81,6 @@ void outputDigit(byte value, byte digit, boolean point) {
         break;
         case 2: digitalWrite(D2, 1);
         break;
-        case 3: digitalWrite(D3, 1);
-        break;
     }
 }
 
@@ -92,17 +90,15 @@ void updateDisplay(unsigned long now) {
     static byte digit = 0;
     byte value;
     switch(digit) {
-        case 3: value=display % 10;
+        case 2: value=display % 10;
         break;
-        case 2: value=(display/10) % 10;
+        case 1: value=(display/10) % 10;
         break;
-        case 1: value=(display/100) % 10;
-        break;
-        case 0: value=(display/1000) % 10;
+        case 0: value=(display/100) % 10;
         break;
     }
-    outputDigit(value, digit, 0);
-    digit = (digit + 1) & 3;
+    outputDigit(value, digit, digit == 0);
+    digit = (digit + 1) % 3;
 }
 
 byte BDown = 0, BUp = 0;
@@ -118,14 +114,22 @@ void updateButtons(unsigned long now) {
             BDown = newBDown;
             if (BDown==1) {
                 mustBeep=1;
-                display--;
+                if (display == 0) {
+                    display= 999;
+                } else {
+                    display--;
+                }
             }
         }
         if (newBUp != BUp) {
             BUp = newBUp;
             if (BUp==1) {
                 mustBeep=1;
-                display++;
+                if (display == 999) {
+                    display= 0;
+                } else {
+                    display++;
+                }
             }
         }
         if (mustBeep) {
@@ -140,7 +144,6 @@ void setup() {
 	pinMode(D0, OUTPUT);
 	pinMode(D1, OUTPUT);
 	pinMode(D2, OUTPUT);
-	pinMode(D3, OUTPUT);
 
 	pinMode(Sa, OUTPUT);
 	pinMode(Sb, OUTPUT);
@@ -151,8 +154,14 @@ void setup() {
 	pinMode(Sg, OUTPUT);
 	pinMode(Sp, OUTPUT);
 
-	pinMode(ButtonDown, INPUT_PULLUP);
-	pinMode(ButtonUp,   INPUT_PULLUP);
+	pinMode(ButtonDown,    INPUT_PULLUP);
+	pinMode(ButtonUp,      INPUT_PULLUP);
+
+    // temporary trick to wire switches etween 2 nano pins
+	pinMode(ButtonDownGnd, OUTPUT);
+    digitalWrite(ButtonDownGnd, 0);
+	pinMode(ButtonUpGnd,   OUTPUT);
+    digitalWrite(ButtonUpGnd,   0);
 
 	pinMode(Speaker, OUTPUT);
 
