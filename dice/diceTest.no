@@ -1,0 +1,141 @@
+#include <Arduino.h>
+#include <serialInput.h>
+#include <avr/sleep.h>
+
+#define DEFAULT_BAUDRATE 115200
+
+#define setA 1
+#define setB 2
+#define setC 4
+#define setD 8
+
+#define outA 4
+#define outB 5
+#define outC 6
+#define outD 7
+
+#define BUTTON 2
+
+byte dice=0, outputs=0;
+
+void dice2output() {
+    switch(dice) {
+        case 1: outputs = setD;
+        break;
+        case 2: outputs = setC;
+        break;
+        case 3: outputs = setC | setD;
+        break;
+        case 4: outputs = setA | setC;
+        break;
+        case 5: outputs = setA | setC | setD;
+        break;
+        case 6: outputs = setA | setB | setC;
+        break;
+        case 7: outputs = setC | setD;
+        break;
+        case 8: outputs = setB | setD;
+        break;
+        case 9: outputs = setA | setD;
+        break;
+        default: outputs = 0;
+        break;
+    }
+}
+
+void updateOutputs() {
+    digitalWrite(outA, outputs & setA);
+    digitalWrite(outB, outputs & setB);
+    digitalWrite(outC, outputs & setC);
+    digitalWrite(outD, outputs & setD);
+}
+
+void setDice(int v) {
+    dice= v;
+    dice2output();
+    updateOutputs();
+}
+
+void setOutputs(int v) {
+    outputs= v;
+    updateOutputs();
+}
+
+void turn() {
+    for(int i=0; i<5; i++) {
+        setDice(7);
+        delay(200);
+        setDice(8);
+        delay(200);
+        setDice(9);
+        delay(200);
+        setDice(8);
+        delay(200);
+    }
+    setOutputs(0);
+}
+
+void roll() {
+    setDice(random(1, 7));
+    for(int i=random(20); i<30; i++) {
+        byte d = (dice + random(1, 5)) % 6 + 1;
+        setDice(d);
+        if (i<26) {
+            delay(20);
+        } else {
+            delay(100);
+        }
+    }
+}
+
+InputItem inputs[] = {
+	{ 'd', 'I', (void *)setDice },
+	{ 'o', 'I', (void *)&setOutputs },
+	{ 't', 'f', (void *)&turn },
+	{ 'r', 'f', (void *)&roll }
+};
+
+unsigned long seed;
+bool toRoll=0;
+
+void button() {
+    byte b = digitalRead(BUTTON);
+    if (b == 0) {
+        seed += micros();
+        dice2output(0);
+    } else {
+        seed += micros();
+        randomSeed(seed);
+        toRoll=1;
+    }
+}
+
+void setup() {
+	Serial.begin(DEFAULT_BAUDRATE);
+
+	pinMode(outA, OUTPUT);
+	pinMode(outB, OUTPUT);
+	pinMode(outC, OUTPUT);
+	pinMode(outD, OUTPUT);
+    pinMode(BUTTON, INPUT_PULLUP);
+
+    updateOutputs();
+
+    attachInterrupt(digitalPinToInterrupt(2), button, CHANGE);
+
+    seed= micros();
+
+	registerInput(sizeof(inputs), inputs);
+	Serial.println("setup ok");
+}
+
+void loop() {
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_mode();
+
+    if (toRoll) {
+        roll();
+        toRoll=0;
+    }
+	handleInput();
+}
