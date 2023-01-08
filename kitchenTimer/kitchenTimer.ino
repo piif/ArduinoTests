@@ -1,5 +1,7 @@
 #include <Arduino.h>
 
+#define HAVE_SERIAL
+
 /*
 TODO :
 voir https://github.com/piif/ArduinoTests/blob/master/bell.ino pour sleep mode et interruptions
@@ -20,14 +22,14 @@ ensuite :
 */
 
 /* segment selection pins (-) */
-#define Sa  6 // PD6
-#define Sb  7 // PD7
-#define Sc 10 // PB2
-#define Sd 11 // PB3
-#define Se 12 // PB4
-#define Sf  8 // PB0
-#define Sg  9 // PB1
-#define Sp  2 // PD2
+#define S_A  6 // PD6
+#define S_B  7 // PD7
+#define S_C 10 // PB2
+#define S_D 11 // PB3
+#define S_E 12 // PB4
+#define S_F  8 // PB0
+#define S_G  9 // PB1
+#define S_P  2 // PD2
 
 // set segment bit to 0
 #define MASK_A  Dbits &= ~(1 << 6)
@@ -61,10 +63,10 @@ ensuite :
 #define B_OTHER 0xE0
 #define D_OTHER 0x03
 
-#define ButtonUp      A0
-#define ButtonDown    A1
+#define BUTTON_UP      A0
+#define BUTTON_DOWN    A1
 
-#define Speaker    13
+#define SPEAKER 13
 
 // current status
 enum {
@@ -74,12 +76,18 @@ enum {
     STOPPING
 } status = OFF;
 
+#define TIMER_STEP 5 // 30
+
 // value currently displayed (-1 = off)
 int display = -1;
-byte displayDigits[] = { 0, 0, 0 };
+byte displaySegments[] = { 0, 0, 0 };
 
 // next millis value for display change
 unsigned long timerNext=0;
+
+// count ring periods
+byte ring = 0;
+#define RING_LENGTH 500
 
 // buttons state
 byte BDown = 0, BUp = 0;
@@ -100,24 +108,34 @@ byte mapSegments[] = {
 	0b11100000, // 7
 	0b11111110, // 8
 	0b11110110, // 9
-    0, 0, 0, 0, 0, 0
+    0b00000001, // 10 = '.'
+    0, 0, 0, 0, 0 // 11..15 : nothing.
 };
 
 void setDisplay(int value) {
     display = value;
-    if (value == -1) {
-        return;
+    // TODO : precompute B & D instead of segments
+    if (value == -1) { // off
+        displaySegments[0] = 0;
+        displaySegments[1] = 0;
+        displaySegments[2] = 0;
+    } else if (value == -2) { // dots only
+        displaySegments[0] = mapSegments[10];
+        displaySegments[1] = mapSegments[10];
+        displaySegments[2] = mapSegments[10];
+    } else if (value == -3) { // all on
+        displaySegments[0] = 0xFF;
+        displaySegments[1] = 0xFF;
+        displaySegments[2] = 0xFF;
+    } else {
+        displaySegments[0] = mapSegments[(display/100) % 10] | 1;
+        displaySegments[1] = mapSegments[(display/10) % 10];
+        displaySegments[2] = mapSegments[display % 10];
     }
-    displayDigits[2] = display % 10;
-    displayDigits[1] = (display/10) % 10;
-    displayDigits[0] = (display/100) % 10;
 }
 
-void outputDigit(byte value, byte digit, boolean point) {
-    byte map = mapSegments[value];
-    if (point) {
-        map |= 1;
-    }
+void outputDigit(byte digit) {
+    byte map = displaySegments[digit];
 
     byte Bbits = (PORTB & B_OTHER) | B_SEGMENTS, Dbits = (PORTD & D_OTHER) | D_SEGMENTS;
 
@@ -141,83 +159,141 @@ void outputDigit(byte value, byte digit, boolean point) {
     PORTB = Bbits; PORTD = Dbits;
 }
 
-void updateDisplay(unsigned long now) {
-    if (status == OFF) {
+void updateDisplay() {
+    if (status == OFF || display == -1) {
         // PORTB &= ~B_DIGITS; useless since B_DIGITS==0
         PORTD &= ~D_DIGITS;
         return;
     }
 
     static byte digit = 0;
-    outputDigit(displayDigits[digit], digit, digit == 0);
+    outputDigit(digit);
     digit = (digit + 1) % 3;
+}
+
+void updateRing(unsigned long now) {
+    if (ring == 0) {
+        status = STOPPING;
+        timerNext = now + 2500;
+        setDisplay(-2);       
+    } else {
+        if (ring & 1) {
+            // TODO : sound on
+            setDisplay(-3);
+        } else {
+            // TODO : sound off
+            setDisplay(-1);
+        }
+        timerNext = now + RING_LENGTH;
+        ring--;
+    }
 }
 
 void updateButtons(unsigned long now) {
     boolean mustBeep=0;
     if (buttonLastChanged==0 || now>buttonLastChanged+BounceDelay) {
         buttonLastChanged = now;
-        byte newBDown = !digitalRead(ButtonDown);
-        byte newBUp = !digitalRead(ButtonUp);
-        if (newBDown != BDown) {
-            BDown = newBDown;
-            if (BDown==1) {
-                mustBeep=1;
-                if (display == 0) {
-                    setDisplay(999);
-                } else {
-                    setDisplay(display-1);
-                }
-            }
-        }
+        byte newBDown = !digitalRead(BUTTON_DOWN);
+        byte newBUp = !digitalRead(BUTTON_UP);
         if (newBUp != BUp) {
             BUp = newBUp;
             if (BUp==1) {
+                // button UP pressed
                 mustBeep=1;
-                if (display == 999) {
-                    setDisplay(0);
-                } else {
-                    setDisplay(display+1);
+                if (status == RUNNING) {
+                    if (display < 999 - TIMER_STEP) {
+                        setDisplay(display + TIMER_STEP);
+                    }
+                } else if (status == OFF || status == STOPPING) {
+                    setDisplay(TIMER_STEP);
+                    status = RUNNING;
+                    timerNext = millis() + 1000;
+                } else if (status == RINGING) {
+                    ring = 0;
+                    updateRing(now);
+                }
+            }
+        }
+        if (newBDown != BDown) {
+            BDown = newBDown;
+            if (BDown==1) {
+                // button DOWN pressed
+                mustBeep=1;
+                if (status == RUNNING) {
+                    if (display > TIMER_STEP) {
+                        setDisplay(display - TIMER_STEP);
+                    } else if (display > 0) {
+                        setDisplay(0);
+                        status = STOPPING;
+                        timerNext = now + 2500;
+                    }
+                } else if (status == RINGING) {
+                    ring = 0;
+                    updateRing(now);
                 }
             }
         }
         if (mustBeep) {
-            tone(Speaker, 880, 5);
+            tone(SPEAKER, 880, 5);
         }
     }
 }
 
-unsigned long tic;
-
 void setup() {
+#ifdef HAVE_SERIAL
+    Serial.begin(115200);
+#endif
 	pinMode(D0, OUTPUT);
 	pinMode(D1, OUTPUT);
 	pinMode(D2, OUTPUT);
 
-	pinMode(Sa, OUTPUT);
-	pinMode(Sb, OUTPUT);
-	pinMode(Sc, OUTPUT);
-	pinMode(Sd, OUTPUT);
-	pinMode(Se, OUTPUT);
-	pinMode(Sf, OUTPUT);
-	pinMode(Sg, OUTPUT);
-	pinMode(Sp, OUTPUT);
+	pinMode(S_A, OUTPUT);
+	pinMode(S_B, OUTPUT);
+	pinMode(S_C, OUTPUT);
+	pinMode(S_D, OUTPUT);
+	pinMode(S_E, OUTPUT);
+	pinMode(S_F, OUTPUT);
+	pinMode(S_G, OUTPUT);
+	pinMode(S_P, OUTPUT);
 
-	pinMode(ButtonDown,    INPUT_PULLUP);
-	pinMode(ButtonUp,      INPUT_PULLUP);
+	pinMode(BUTTON_UP,   INPUT_PULLUP);
+	pinMode(BUTTON_DOWN, INPUT_PULLUP);
 
-	pinMode(Speaker, OUTPUT);
-
-    tic= millis();
-
-    status = RUNNING;
-    setDisplay(0);
+	pinMode(SPEAKER, OUTPUT);
+#ifdef HAVE_SERIAL
+    Serial.println("Setup OK");
+#endif
 }
 
 // TODO : drive thru timer interrupts any 10 millis ?
 void loop() {
-    // outputDigit(8, 1, 1);
-    unsigned long tac = millis();
-    updateButtons(tac);
-    updateDisplay(tac);
+    unsigned long now = millis();
+    if (timerNext != 0 && now >= timerNext) {
+#ifdef HAVE_SERIAL
+    Serial.print("timerNext ");Serial.println(timerNext);
+    Serial.print("status    ");Serial.println(status);
+    if (status == RINGING) {
+        Serial.print("ring      ");Serial.println(ring);
+    }
+    Serial.print("display   ");Serial.println(display);
+#endif
+        if (status == RUNNING) {
+            setDisplay(display-1);
+            if (display == 0) {
+                ring = 5;
+                status = RINGING;
+                updateRing(now);
+            } else {
+                timerNext = now + 1000;
+            }
+        } else if (status == RINGING) {
+            updateRing(now);
+        } else if (status == STOPPING) {
+            setDisplay(-1);
+            timerNext = 0;
+            // TODO : sleep mode
+        }
+    }
+    updateButtons(now);
+    updateDisplay();
 }
