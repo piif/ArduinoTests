@@ -6,7 +6,7 @@
 	// other includes with full pathes
 	// example : #include "led7/led7.h"
 #ifdef INTERACTIVE
-	#include "serialInput/serialInput.h"
+	#include "serialInput.h"
 #endif
 #else
 	// other includes with short pathes

@@ -3,7 +3,7 @@
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
 	#include <Servo/src/Servo.h>
-	#include <serialInput/serialInput.h>
+	#include <serialInput.h>
 	#include <MsTimer2/MsTimer2.h>
 	#include <IRLib/IRLib.h>
 	// other includes with full pathes

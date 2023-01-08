@@ -2,7 +2,7 @@
 
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
-	#include <serialInput/serialInput.h>
+	#include <serialInput.h>
 	#include <MsTimer2/MsTimer2.h>
 	// other includes with full pathes
 	// example : #include "led7/led7.h"

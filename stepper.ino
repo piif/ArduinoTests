@@ -1,6 +1,7 @@
+// PIF_TOOL_CHAIN_OPTION: EXTRA_LIBS := ArduinoTools
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
-	#include "serialInput/serialInput.h"
+	#include "serialInput.h"
 #else
 	#include "serialInput.h"
 #endif
@@ -92,7 +93,8 @@ void doStep() {
 	if (remaining == 0) {
 		return;
 	}
-	if (millis() >= nextStep) {
+	unsigned long now = millis();
+	if (now >= nextStep) {
 		step = step + (rotateRight ? 1 : -1);
 		byte toSend;
 		if (full) {
@@ -110,13 +112,13 @@ void doStep() {
 		remaining--;
 		if (remaining == 0) {
 			if (!remanent) {
-				delay(100);
+				delay(stepDelay >> 1);
 				SET_MOTOR(0);
 			}
 			return;
 		}
 
-		nextStep = millis() + stepDelay;
+		nextStep = now + stepDelay;
 	}
 }
 

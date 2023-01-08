@@ -1,11 +1,11 @@
 #ifdef PIF_TOOL_CHAIN
 	#include <Arduino.h>
-	#include "ArduinoTools.h"
+	#include "LowLevelTools.h"
 	#include "pwm/pwm.h"
-	#include "serialInput/serialInput.h"
+	#include "serialInput.h"
 //	#include "arduino-toneac/toneAC.h"
 #else
-	#include "ArduinoTools.h"
+	#include "LowLevelTools.h"
 	#include "pwm.h"
 #endif
 

@@ -1,10 +1,4 @@
-#ifdef PIF_TOOL_CHAIN
-	#include <Arduino.h>
-	// other includes with full pathes
-	// example : #include "led7/led7.h"
-#else
-	// other includes with short pathes
-#endif
+#include <Arduino.h>
 
 #ifndef DEFAULT_BAUDRATE
 	#ifdef __AVR_ATmega644P__
