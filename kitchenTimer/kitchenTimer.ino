@@ -4,6 +4,8 @@
 // for debug purpose (my target nano serial port is out of order)
 #define HAVE_SERIAL
 
+#define TEST_SPEAKER
+
 /*
 TODO :
 voir https://github.com/piif/ArduinoTests/blob/master/bell.ino pour sleep mode et interruptions
@@ -26,21 +28,21 @@ ensuite :
 /* segment selection pins (-) */
 #define S_A  6 // PD6
 #define S_B  7 // PD7
-#define S_C 10 // PB2
-#define S_D 11 // PB3
-#define S_E 12 // PB4
+#define S_C 11 // PB3
+#define S_D 12 // PB4
+#define S_E 13 // PB5
 #define S_F  8 // PB0
-#define S_G  9 // PB1
+#define S_G 10 // PB2
 #define S_P  2 // PD2
 
 // set segment bit to 0
 #define MASK_A(Bbits, DBits)  Dbits &= ~(1 << 6)
 #define MASK_B(Bbits, DBits)  Dbits &= ~(1 << 7)
-#define MASK_C(Bbits, DBits)  Bbits &= ~(1 << 2)
-#define MASK_D(Bbits, DBits)  Bbits &= ~(1 << 3)
-#define MASK_E(Bbits, DBits)  Bbits &= ~(1 << 4)
+#define MASK_C(Bbits, DBits)  Bbits &= ~(1 << 3)
+#define MASK_D(Bbits, DBits)  Bbits &= ~(1 << 4)
+#define MASK_E(Bbits, DBits)  Bbits &= ~(1 << 5)
 #define MASK_F(Bbits, DBits)  Bbits &= ~(1 << 0)
-#define MASK_G(Bbits, DBits)  Bbits &= ~(1 << 1)
+#define MASK_G(Bbits, DBits)  Bbits &= ~(1 << 2)
 #define MASK_P(Bbits, DBits)  Dbits &= ~(1 << 2)
 
 /* digit selection pins (+) */
@@ -58,17 +60,17 @@ ensuite :
 #define D_DIGITS 0x38
 
 // segment bits
-#define B_SEGMENTS 0x1F
+#define B_SEGMENTS 0x3D
 #define D_SEGMENTS 0xC4
 
 // other bits
-#define B_OTHER 0xE0
+#define B_OTHER 0xC2
 #define D_OTHER 0x03
 
 #define BUTTON_UP      A0
 #define BUTTON_DOWN    A1
 
-#define SPEAKER 13
+#define SPEAKER 9
 
 // current status
 enum {
@@ -93,6 +95,9 @@ unsigned long timerNext=0;
 byte ring = 0;
 #define RING_LENGTH 500
 
+// timestamp when click sound must stop
+unsigned long clicking=0;
+
 // buttons state
 byte BDown = 0, BUp = 0;
 // last time buttons state changed
@@ -115,6 +120,14 @@ byte mapSegments[] = {
     0b00000001, // 10 = '.'
     0, 0, 0, 0, 0 // 11..15 : nothing.
 };
+
+void inline soundOn() {
+    TCCR1A = (TCCR1A & 0x3F) | 0x80;
+}
+
+void inline soundOff() {
+    TCCR1A = (TCCR1A & 0x3F);
+}
 
 void setDisplay(int value) {
     display = value;
@@ -186,16 +199,19 @@ void updateDisplay() {
 
 void updateRing(unsigned long now) {
     if (ring == 0) {
-        noTone(SPEAKER);
+        soundOff();
+        // noTone(SPEAKER);
         status = STOPPING;
         timerNext = now + 2500;
         setDisplay(-2);       
     } else {
         if (ring & 1) {
-            tone(SPEAKER, 1000);
+            soundOn();
+            // tone(SPEAKER, 1000);
             setDisplay(-3);
         } else {
-            noTone(SPEAKER);
+            soundOff();
+            // noTone(SPEAKER);
             setDisplay(-1);
         }
         timerNext = now + RING_LENGTH;
@@ -204,7 +220,7 @@ void updateRing(unsigned long now) {
 }
 
 void updateButtons(unsigned long now) {
-    boolean mustBeep=0;
+    boolean mustClick = 0;
     if (buttonLastChanged==0 || now>buttonLastChanged+BounceDelay) {
         buttonLastChanged = now;
         byte newBDown = !digitalRead(BUTTON_DOWN);
@@ -213,7 +229,7 @@ void updateButtons(unsigned long now) {
             BUp = newBUp;
             if (BUp==1) {
                 // button UP pressed
-                mustBeep=1;
+                mustClick=1;
                 if (status == RUNNING) {
                     if (display < 999 - TIMER_STEP) {
                         setDisplay(display + TIMER_STEP);
@@ -232,7 +248,7 @@ void updateButtons(unsigned long now) {
             BDown = newBDown;
             if (BDown==1) {
                 // button DOWN pressed
-                mustBeep=1;
+                mustClick=1;
                 if (status == RUNNING) {
                     if (display > TIMER_STEP) {
                         setDisplay(display - TIMER_STEP);
@@ -247,10 +263,18 @@ void updateButtons(unsigned long now) {
                 }
             }
         }
-        if (mustBeep) {
-            tone(SPEAKER, 880, 5);
+        if (mustClick) {
+            soundOn();
+            clicking = now+5;
+            // tone(SPEAKER, 880, 5);
         }
     }
+}
+
+//ISR(INT0_vect) {}
+volatile unsigned long myMillis=0;
+ISR(TIMER1_OVF_vect) {
+    myMillis++;
 }
 
 void setup() {
@@ -274,6 +298,22 @@ void setup() {
 	pinMode(BUTTON_DOWN, INPUT_PULLUP);
 
 	pinMode(SPEAKER, OUTPUT);
+
+/* frequency is 16MHz
+    clock select = 011 => prescale 64 , thus 250KHz
+    ICR1 = 125 , WGM 1010 = phase correct (0->ICR1 then ICR1->0) -> 2*500ms
+    OCR1A = 63 , toggle output half way
+    OCIE1B = 1 to raise interrupt at Bottom => every 1ms
+    0C1A = 10 => toggle every 500ms +> frequency 1000
+    TCCR1A = 0xE?; // set OC1A , clear on compare OCR1B
+*/
+    ICR1 = 125;
+    OCR1A = 63;
+    TCCR1A = 0b00000010; // 0b10000010; // COM1A = 10 , COM1B = 0 , WGM xx10 / 0b00000010 => OC1A off 
+    TCCR1B = 0b00010011; // WGM 10xx , Clock Select 011
+    TCCR1C = 0;
+    TIMSK1 = 1; // TOV1
+
 #ifdef HAVE_SERIAL
 	// Serial.print("Lfuse "); Serial.println(boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS), HEX);
 	// Serial.print("Hfuse "); Serial.println(boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS), HEX);
@@ -282,9 +322,37 @@ void setup() {
 #endif
 }
 
+#ifdef TEST_SPEAKER
+void loop() {
+    static byte BUp = 0;
+    byte newBUp = !digitalRead(BUTTON_UP);
+    if (BUp != newBUp) {
+        BUp = newBUp;
+        if (BUp) {
+#ifdef HAVE_SERIAL
+            Serial.print("myMillis "); Serial.println(myMillis);
+            Serial.println(TCCR1A, HEX);
+            Serial.println(TCCR1B, HEX);
+            Serial.println(TCCR1C, HEX);
+            Serial.println(ICR1);
+            Serial.println(OCR1A);
+#endif
+            TCCR1A = (TCCR1A & 0x3F) | 0x80;
+            // tone(SPEAKER, 1000);
+        } else {
+            TCCR1A = (TCCR1A & 0x3F);
+            // noTone(SPEAKER);
+        }
+    }
+}
+#else
 // TODO : drive thru timer interrupts any 10 millis ?
 void loop() {
-    unsigned long now = millis();
+    unsigned long now = myMillis;
+    if (clicking != 0 && now >= clicking) {
+        soundOff();
+        clicking = 0;
+    }
     if (timerNext != 0 && now >= timerNext) {
 #ifdef HAVE_SERIAL
     Serial.print("timerNext ");Serial.println(timerNext);
@@ -314,3 +382,4 @@ void loop() {
     updateButtons(now);
     updateDisplay();
 }
+#endif // TEST_SPEAKER
