@@ -3,8 +3,9 @@
 
 // for debug purpose (my target nano serial port is out of order)
 #define HAVE_SERIAL
+// #define NANO
 
-#define TEST_SPEAKER
+// #define TEST_SPEAKER
 
 /*
 TODO :
@@ -16,39 +17,46 @@ voir https://github.com/piif/ArduinoTests/blob/master/bell.ino pour sleep mode e
 - zéro => bip, puis mise en veille
 
 ensuite :
-- revoir cablage pour le nano ? : les pattes D0 à D12 sont alignées => on peut mettre le 7 segments directement en face
-  voire le souder dessus
 - est-ce qu'on arrive à dialoguer avec ? via les pattes rx/tx ?
   sinon, revoir https://docs.google.com/document/d/1PdzK6jrWJHqXbHkuemFGcNKQm6GtFs1EnQDyhPDC-Q4/edit : c'est peut être récupérable en fait ?
 
 - mettre sur pile et check la conso (si le serial est mort, peut être qu'il consomme plus rien ...)
   sinon, désouder sa patte + , et la led power ?
+
+à vide, en 3V (2 piles AA), 7mA
+dès qu'on appuie sur un bouton, l'écran s'allume, on passe à 15-20mA, mais ça reboote
+=> à tester avec 3 piles
+sinon
++ désactiver un max de truc
++ passer en 8MHz ? (d'après https://forum.arduino.cc/t/powering-nano-from-a-3-3volt-battery/1005954 post #2)
++ voir pour dégager le composant série et la led power
++ voir comment entrer après le régulateur ? => trouver un schéma du nano
 */
 
 /* segment selection pins (-) */
 #define S_A  6 // PD6
 #define S_B  7 // PD7
-#define S_C 11 // PB3
-#define S_D 12 // PB4
-#define S_E 13 // PB5
+#define S_C 10 // PB2
+#define S_D 11 // PB3
+#define S_E 12 // PB4
 #define S_F  8 // PB0
-#define S_G 10 // PB2
-#define S_P  2 // PD2
+#define S_G  9 // PB1
+#define S_P  2 // PD1
 
 // set segment bit to 0
 #define MASK_A(Bbits, DBits)  Dbits &= ~(1 << 6)
 #define MASK_B(Bbits, DBits)  Dbits &= ~(1 << 7)
-#define MASK_C(Bbits, DBits)  Bbits &= ~(1 << 3)
-#define MASK_D(Bbits, DBits)  Bbits &= ~(1 << 4)
-#define MASK_E(Bbits, DBits)  Bbits &= ~(1 << 5)
+#define MASK_C(Bbits, DBits)  Bbits &= ~(1 << 2)
+#define MASK_D(Bbits, DBits)  Bbits &= ~(1 << 3)
+#define MASK_E(Bbits, DBits)  Bbits &= ~(1 << 4)
 #define MASK_F(Bbits, DBits)  Bbits &= ~(1 << 0)
-#define MASK_G(Bbits, DBits)  Bbits &= ~(1 << 2)
+#define MASK_G(Bbits, DBits)  Bbits &= ~(1 << 1)
 #define MASK_P(Bbits, DBits)  Dbits &= ~(1 << 2)
 
 /* digit selection pins (+) */
 #define D0  5 // PD5
 #define D1  4 // PD4
-#define D2  3 // PD3
+#define D2  3 // PD2
 
 // set digit bit to 1
 #define MASK_D0(Bbits, DBits)  Dbits |= (1 << 5)
@@ -60,17 +68,22 @@ ensuite :
 #define D_DIGITS 0x38
 
 // segment bits
-#define B_SEGMENTS 0x3D
+#define B_SEGMENTS 0x1F
 #define D_SEGMENTS 0xC4
 
 // other bits
-#define B_OTHER 0xC2
+#define B_OTHER 0xE0
 #define D_OTHER 0x03
 
 #define BUTTON_UP      A0
 #define BUTTON_DOWN    A1
 
-#define SPEAKER 9
+#define SPEAKER A3
+
+// set speaker port on/off
+#define SPEAKER_ON()   PORTC |=  (1 << 3)
+#define SPEAKER_OFF()  PORTC &= ~(1 << 3)
+
 
 // current status
 enum {
@@ -121,12 +134,26 @@ byte mapSegments[] = {
     0, 0, 0, 0, 0 // 11..15 : nothing.
 };
 
+volatile byte beeping = 0;
 void inline soundOn() {
-    TCCR1A = (TCCR1A & 0x3F) | 0x80;
+    beeping = 1; // usefull ?
+    TIMSK2 |= 2; // enable OCIE2A
 }
 
 void inline soundOff() {
-    TCCR1A = (TCCR1A & 0x3F);
+    beeping = 0;
+    TIMSK2 &= ~2; // disable OCIE2A
+}
+
+//ISR(INT0_vect) {}
+volatile unsigned long myMillis=0;
+ISR(TIMER2_OVF_vect) {
+    myMillis++;
+    SPEAKER_OFF();
+}
+
+ISR(TIMER2_COMPA_vect) {
+    SPEAKER_ON();
 }
 
 void setDisplay(int value) {
@@ -266,15 +293,8 @@ void updateButtons(unsigned long now) {
         if (mustClick) {
             soundOn();
             clicking = now+5;
-            // tone(SPEAKER, 880, 5);
         }
     }
-}
-
-//ISR(INT0_vect) {}
-volatile unsigned long myMillis=0;
-ISR(TIMER1_OVF_vect) {
-    myMillis++;
 }
 
 void setup() {
@@ -300,19 +320,19 @@ void setup() {
 	pinMode(SPEAKER, OUTPUT);
 
 /* frequency is 16MHz
-    clock select = 011 => prescale 64 , thus 250KHz
-    ICR1 = 125 , WGM 1010 = phase correct (0->ICR1 then ICR1->0) -> 2*500ms
-    OCR1A = 63 , toggle output half way
-    OCIE1B = 1 to raise interrupt at Bottom => every 1ms
-    0C1A = 10 => toggle every 500ms +> frequency 1000
-    TCCR1A = 0xE?; // set OC1A , clear on compare OCR1B
+    clock select = 4 => prescale 64 , thus 250KHz
+    Mode 5 = Phase Correct PWM, toggle output COM2B half way
+
+    OCR2A  = 125 => 0->0CR2A then OCR2A->0) -> 2*500ms
+    OCR2B  = 63  => toggle output half way
+    OCIE2B = 1   => to raise interrupt at Bottom => every 1ms
+    COM2A  = 2   => toggle every 500ms -> frequency 1000
 */
-    ICR1 = 125;
-    OCR1A = 63;
-    TCCR1A = 0b00000010; // 0b10000010; // COM1A = 10 , COM1B = 0 , WGM xx10 / 0b00000010 => OC1A off 
-    TCCR1B = 0b00010011; // WGM 10xx , Clock Select 011
-    TCCR1C = 0;
-    TIMSK1 = 1; // TOV1
+    OCR2A  = 125;
+    OCR2B  = 63;
+    TCCR2A = 0b00000001; // 0b00100001; // COM1A = 0 , COM1B = 10 , WGM x01 / 0b00000001 => OC1A off 
+    TCCR2B = 0b00001100; // WGM 1xx , Clock Select 100
+    TIMSK2 = 0b00000001; // TOIE2 , 0b0011 = TOIE2 + OCIE2A when beeping
 
 #ifdef HAVE_SERIAL
 	// Serial.print("Lfuse "); Serial.println(boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS), HEX);
@@ -329,19 +349,19 @@ void loop() {
     if (BUp != newBUp) {
         BUp = newBUp;
         if (BUp) {
+            soundOn();
 #ifdef HAVE_SERIAL
             Serial.print("myMillis "); Serial.println(myMillis);
-            Serial.println(TCCR1A, HEX);
-            Serial.println(TCCR1B, HEX);
-            Serial.println(TCCR1C, HEX);
-            Serial.println(ICR1);
-            Serial.println(OCR1A);
+            Serial.print("TCCR2A "); Serial.println(TCCR2A, HEX);
+            Serial.print("TCCR2B "); Serial.println(TCCR2B, HEX);
+            Serial.print("PRR    "); Serial.println(PRR   , HEX);
+            Serial.print("ASSR   "); Serial.println(ASSR  , HEX);
+            Serial.print("TIMSK2 "); Serial.println(TIMSK2, HEX);
+            Serial.print("OCR2A  "); Serial.println(OCR2A);
+            Serial.print("OCR2B  "); Serial.println(OCR2B);
 #endif
-            TCCR1A = (TCCR1A & 0x3F) | 0x80;
-            // tone(SPEAKER, 1000);
         } else {
-            TCCR1A = (TCCR1A & 0x3F);
-            // noTone(SPEAKER);
+            soundOff();
         }
     }
 }
