@@ -1,3 +1,6 @@
+#ifndef CS1694_H
+#define CS1694_H
+
 #include <Arduino.h>
 
 // some tests with CS16940E component, display/keys handler
@@ -51,3 +54,5 @@ private:
     void writeByte(byte value);
     byte readByte();
 };
+
+#endif

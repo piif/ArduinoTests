@@ -1,16 +1,25 @@
+#ifndef DVDPANEL_H
+#define DVDPANEL_H
+
+#include "Arduino.h"
+#include "cs1694.h"
+
 #define BUTTON_1 0x0002
 #define BUTTON_2 0x0004
 #define BUTTON_3 0x2000
 #define BUTTON_4 0x0010
 #define BUTTON_5 0x0020
-
 class DVDPanel {
 public:
     byte *lcdDisplay;
-    DVDPanel(byte display[]) {
-        lcdDisplay = display;
+    CS1694 *cs1694;
+    DVDPanel(CS1694 *_cs1694) {
+        cs1694 = _cs1694;
+        lcdDisplay = cs1694->display;
         clearPanel();
     }
+
+    word buttons = 0;
 
     // for each map, we consider a list of segment references
     // each reference is a byte with b7-b4 = lcdDisplay entry (0 to 0x0C) and b3-b0 = bit number
@@ -62,4 +71,24 @@ public:
         }
         // Serial.println();
     }
+
+    // return new value when there's a change, 0xFFFF else
+    word checkButtons() {
+        byte keys[2];
+        cs1694->readData(0, 2, keys);
+        // Serial.print("Keys =");
+        // for(byte i = 0; i < 5; i++) {
+        //     Serial.print(' '); Serial.print(keys[i], HEX);
+        // }
+        // Serial.println();
+        word newButtons = keys[0] << 8 | keys[1];
+        if (newButtons != buttons) {
+            buttons = newButtons;
+            // Serial.println(buttons, HEX);
+            return buttons;
+        }
+        return 0xFFFF;
+    }
 };
+
+#endif

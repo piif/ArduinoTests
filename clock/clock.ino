@@ -46,20 +46,27 @@ byte fromHex(byte h) {
 long counter = 1234567;
 
 void loop() {
-    static byte keys[5];
-    static word buttons = 0;
-    cs1694.readData(0, 5, keys);
-    Serial.print("Keys =");
-    for(byte i = 0; i < 5; i++) {
-        Serial.print(' '); Serial.print(keys[i], HEX);
+    word buttons = dvdPanel.checkButtons();
+    if (buttons != 0xFFFF) {
+        Serial.print("Buttons ");
+        if (buttons & BUTTON_1) {
+            Serial.print('A');
+        }
+        if (buttons & BUTTON_2) {
+            Serial.print('B');
+        }
+        if (buttons & BUTTON_3) {
+            Serial.print('C');
+        }
+        if (buttons & BUTTON_4) {
+            Serial.print('D');
+        }
+        if (buttons & BUTTON_5) {
+            Serial.print('E');
+        }
+        Serial.println();
     }
-    Serial.println();
-    word newButtons = keys[0] << 8 | keys[1];
-    if (newButtons != buttons) {
-        buttons = newButtons;
-        Serial.println(buttons, HEX);
-    }
-    delay(1000);
+    delay(500);
 
     byte d= counter%8;
     dvdPanel.clearSegment(dvdPanel.diskMap[d]);
