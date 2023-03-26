@@ -1,14 +1,19 @@
+#ifdef DS3231_TEST
+
+#define HAVE_SERIAL
+#define DS3231_DEBUG
+
 #include <Arduino.h>
 #include <Wire.h>
 #include "ds3231.h"
+#include "timeFunctions.h"
 
-#define HAVE_SERIAL
+DS3231 rtc;
 
 void setup() {
 #ifdef HAVE_SERIAL
     Serial.begin(115200);
 #endif
-    Wire.begin();
 
     // initialize external interrupt on pin 2 (INT0)
     EICRA |= 0x03;
@@ -28,7 +33,7 @@ void setup() {
     setTime(&time);
 
     /* output square wave + oscillator continue counting when power off + no oscillator output */
-    setControl(0b00000000 , 0b10000000);
+    rtc.setControl(0b00000000 , 0b10000000);
     /* output nothing */
     // setControl(0b10000100 , 0b10000000);
     /* output nothing but continue counting */
@@ -37,13 +42,13 @@ void setup() {
 
 #ifdef HAVE_SERIAL
     Serial.println("dumpAllRegisters :");
-    dumpAllRegisters();
+    rtc.dumpAllRegisters();
 #endif
 }
 
 void displayTime() {
     TimeStruct time;
-    getTime(&time);
+    rtc.getTime(&time);
     toLocal(&time);
 #ifdef HAVE_SERIAL
     Serial.print("dayOfWeek : "); Serial.println(shortDays[time.dayOfWeek]);
@@ -54,8 +59,8 @@ void displayTime() {
     Serial.print("minutes   : "); Serial.println(time.minutes);
     Serial.print("seconds   : "); Serial.println(time.seconds);
 
-    float fullTemp = getFullTemp() / 4.0;
-    short temp = getShortTemp();
+    float fullTemp = rtc.getFullTemp() / 4.0;
+    short temp = rtc.getShortTemp();
     Serial.print("full temp : "); Serial.println(fullTemp);
     Serial.print("temp      : "); Serial.println(temp);
 #endif
@@ -73,3 +78,5 @@ void loop() {
         clockTick = 0;
     }
 }
+
+#endif
