@@ -1,15 +1,8 @@
+
+#include "timeFunctions.h"
+
 #define DS3231_I2C_ADDRESS 0x68
 #define DS3231_REG_NUM  0x13
-
-typedef struct _TimeStruct {
-    byte seconds;
-    byte minutes;
-    byte hours;
-    byte dayOfWeek;
-    byte dayOfMonth;
-    byte month;
-    byte year;
-} TimeStruct;
 
 char *registerContents[] = {
     /* 0x00 */ "Seconds",
