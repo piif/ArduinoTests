@@ -1,6 +1,7 @@
 #ifndef DS3231_H
 #define DS3231_H
 
+#include <Wire.h>
 #include "timeFunctions.h"
 
 #define DS3231_I2C_ADDRESS 0x68
@@ -121,6 +122,7 @@ public:
     }
 };
 
+#ifdef DS3231_DEBUG
 static char *DS3231::registerContents[0x13] = {
     /* 0x00 */ "Seconds",
     /* 0x01 */ "Minutes",
@@ -142,5 +144,6 @@ static char *DS3231::registerContents[0x13] = {
     /* 0x11 */ "MSB_Temp",
     /* 0x12 */ "LSB_Temp"
 };
+#endif
 
 #endif

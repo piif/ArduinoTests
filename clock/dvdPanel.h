@@ -9,6 +9,9 @@
 #define BUTTON_3 0x2000
 #define BUTTON_4 0x0010
 #define BUTTON_5 0x0020
+
+#define LED7_CHARS "0123456789. abcdefghijklmnopqrstuvwxyz?-_'"
+
 class DVDPanel {
 public:
     byte *lcdDisplay;
@@ -31,7 +34,9 @@ public:
 
     static byte digitMap[7][7];
 
-    static byte digitSegments[10];
+    static byte charSegments[42];
+    static byte *digitSegments;
+    static byte *letterSegments;
 
     void setSegment(byte ref) {
         lcdDisplay[ref>>4] |= 1 << (ref&0x0f);
@@ -52,7 +57,7 @@ public:
     }
 
     void setDigit(byte position, byte value) {
-        byte segments = digitSegments[value];
+        byte segments = charSegments[value];
         for(byte bit = 0; bit < 7; bit++) {
             if (segments & (1 << bit)) {
                 setSegment(digitMap[position][bit]);
@@ -70,6 +75,10 @@ public:
             value = value % mask;
         }
         // Serial.println();
+    }
+
+    void flush() {
+        cs1694->flushDisplay();
     }
 
     // return new value when there's a change, 0xFFFF else

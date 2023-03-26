@@ -25,4 +25,53 @@ static byte DVDPanel::digitMap[7][7] = {
     { 0x05, 0x25, 0x45, 0x65, 0x85, 0xA5, 0xC5 }
 };
 
-static byte DVDPanel::digitSegments[10] = { 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F };
+// static byte DVDPanel::digitSegments[10] = { 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F };
+
+// segment map for each of the characters listed in mapChars
+static byte DVDPanel::charSegments[42] = {
+	// mLlbrRt
+	0b00111111, // 0
+	0b00000110, // 1
+	0b01011011, // 2
+	0b01001111, // 3
+	0b01100110, // 4
+	0b01101101, // 5
+	0b01111101, // 6
+	0b00000111, // 7
+	0b01111111, // 8
+	0b01101111, // 9
+	0b00001000, // .
+	0b00000000, // ' '
+	0b01110111, // a
+	0b01111100, // b
+	0b00111001, // c
+	0b01011110, // d
+	0b01111001, // e
+	0b01110001, // f
+	0b00111101, // g
+	0b01110100, // h
+	0b00000100, // i
+	0b00001110, // j
+	0b01111000, // k
+	0b00111000, // l
+	0b00110111, // m
+	0b01010100, // n
+	0b01011100, // o
+	0b01110011, // p
+	0b01100111, // q
+	0b01010000, // r
+	0b00101101, // s
+	0b01110000, // t
+	0b00011100, // u
+	0b00111110, // v
+	0b01111110, // w
+	0b01110110, // x
+	0b01101110, // y
+	0b00011011, // z
+	0b01010011, // ?
+	0b01000000, // -
+	0b00001000, // _
+	0b00100000, // '
+};
+static byte *DVDPanel::letterSegments = DVDPanel::charSegments+12;
+static byte *DVDPanel::digitSegments = DVDPanel::charSegments;
