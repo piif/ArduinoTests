@@ -26,7 +26,6 @@ void sendCommand(byte address, byte value, byte iterations = 1) {
 }
 
 void sendData(byte address, byte *values, byte len) {
-    digitalWrite(MATRIX_CS, LOW);
 #ifdef HAVE_SERIAL
     Serial.print(address, HEX); 
     for (byte i=0; i<len; i++) {
@@ -34,6 +33,7 @@ void sendData(byte address, byte *values, byte len) {
     }
     Serial.println();
 #endif
+    digitalWrite(MATRIX_CS, LOW);
     while(len--) {
         shiftOut(MATRIX_DIN, MATRIX_CLK, MSBFIRST, address);
         shiftOut(MATRIX_DIN, MATRIX_CLK, MSBFIRST, *values);
@@ -79,57 +79,63 @@ void setup() {
     digitalWrite(MATRIX_CLK, HIGH);
 
     sendCommand(0x9, 0, WIDTH); // clear decode mode
-    sendCommand(0xA, 2, WIDTH); // set intensity
+    sendCommand(0xA, 0, WIDTH); // set intensity
     sendCommand(0xB, 7, WIDTH); // set scan limit
     sendCommand(0xC, 1, WIDTH); // clear shutdown 
 
-    for (byte i= 0; i<8; i++) {
+    for (byte i=0; i<8; i++) {
         sendCommand(i+1, testBuffer[i], WIDTH);
     }
 }
 
+byte matrix[8 * WIDTH] = { 0, };
+
 void clear() {
-    memset(matrix, WIDTH*8, 0);
+    memset(matrix, 0, 8*WIDTH);
 }
 
 void flush() {
-    for(byte y=0; y<8; y++) {
-        for(byte x=0; x<WIDTH; x++) {
-            sendData(y+1, matrix[x*8+y]);
-        }
+    byte *ptr = matrix;
+    for(byte y=1; y<=8; y++) {
+        sendData(y, ptr, WIDTH);
+        ptr += WIDTH;
     }
 }
 
-void dumpMatrix() {
 #ifdef HAVE_SERIAL
+void dumpMatrix() {
     for(byte y=0; y<8; y++) {
         for(byte x=0; x<WIDTH; x++) {
             for(byte mask = 0x80; mask; mask >>= 1) {
-                Serial.print(matrix[x*8+y] & mask ? '#' : ' ');
+                Serial.print(matrix[x+y*WIDTH] & mask ? '#' : ' ');
             }
         }
         Serial.println();
     }
-#endif
 }
+#endif
 
 char *text[] = {
-    "test",
-    "1+1 !?",
-    "depasse"
+    "Lun 26",
+    "Mar 14",
+    "Mer 2",
+    "Jeu 28",
+    "Ven 30",
+    "Sam 28",
+    "Dim 31"
+
 };
-#define NB_TEXT 3
+#define NB_TEXT 7
 
 byte textEntry=0;
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!   TODO: recoder avec une matrice transposée, pour avoir un buffer de 4 octets à envoyer en ligne à la même adresse
-byte matrix[WIDTH*8] = { 0, };
 
 void loop() {
     delay(1000);
     clear();
-    drawString(matrix, WIDTH*8, 0, text[textEntry]);
+    drawString(matrix, WIDTH, 0, text[textEntry]);
+#ifdef HAVE_SERIAL
     dumpMatrix();
+#endif
     textEntry = (textEntry+1) % NB_TEXT;
     flush();
 }

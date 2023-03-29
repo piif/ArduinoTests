@@ -11,7 +11,7 @@ const byte font5x7 [] PROGMEM = {
     B00000000,
     B00000000,
     B00000000,
-    6,
+    3,
 
     B10000000,	//!
     B10000000,
@@ -877,44 +877,45 @@ byte charWidth(char c) {
     return pgm_read_byte_near(font5x7 + ((c - 0x20) * 8) + 7);
 }
 
-// Given an array of 8xN bytes containing N matrices (left to right) of 8 bytes (top to bottom) of 8 bits (LSB = right)
-// Draw a char into the array, at position X (thus from bit 8-X%8 into matrix X/8)
+// Given an array of 8xN bytes containing 8 lines (top to bottom) of N bytes (left to right) of 8 bits (MSB = left, LSB = right)
+// Draw a char into the array, at position X (thus from bit 8-X%8 into byte X/8 of each line)
 // return next X position (Depends on character width)
-int drawChar(byte *matrix, int maxX, int X, char c) {
-    byte width = charWidth(c);
-    if (width == 0) {
+int drawChar(byte *matrix, byte width, int X, char c) {
+    byte cw = charWidth(c);
+    if (cw == 0) {
         return X;
     }
 
-    byte matrixOffset = X / 8;
+    byte lineOffset = X / 8;
     byte bitOffset = X & 7;
-    int byteOffset = matrixOffset * 8;
     // don't overlap if it's over the last matrix
-    bool overlap = width + bitOffset > 8;
-    int result = X+width;
-    if (result >= maxX) {
+    bool overlap = cw + bitOffset > 8;
+    int newX = X + cw;
+    if (newX >= width*8) {
         overlap = false;
-        result = maxX;
+        newX = width*8;
     }
 
-    for(byte y=0; y<8; y++) {
+    byte *ptr = matrix + lineOffset;
+    for(byte y=0; y<7; y++) {
         byte map = pgm_read_byte_near(font5x7 + ((c - 0x20) * 8) + y);
-        matrix[matrixOffset]   |= map >> bitOffset;
+        ptr[0] |= map >> bitOffset;
         if (overlap) {
-            matrix[matrixOffset+8] |= map << (8 - bitOffset);
+            ptr[1] |= map << (8 - bitOffset);
         }
+        ptr += width;
     }
-    return result;
+    return newX;
 }
 
-int drawString(byte *matrix, int maxX, int X, char *str) {
+int drawString(byte *matrix, byte width, int X, char *str) {
     for(;;) {
         if (!*str) {
             return X;
         }
-        X = drawChar(matrix, maxX, X, *str);
-        if (X >= maxX) {
-            return X;
+        X = drawChar(matrix, width, X, *str);
+        if (X >= width*8) {
+            return width*8;
         }
         str++;
     }
