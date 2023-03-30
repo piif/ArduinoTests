@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "timeFunctions.h"
 
 const byte lastDay[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -11,6 +12,13 @@ char *shortDays[8] = {
     "Ven",
     "Sam",
     "Dim"
+};
+
+char *shortMonthes[13] = {
+    "xxx",
+    "Jan", "Fev" , "Mars", "Avr",
+    "Mai", "Juin", "Juil", "Aout",
+    "Sep", "Oct" , "Nov" , "Dec"
 };
 
 void nextDay(TimeStruct *time) {

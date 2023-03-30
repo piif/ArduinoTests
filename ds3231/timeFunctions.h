@@ -15,6 +15,7 @@ typedef struct _TimeStruct {
 } TimeStruct;
 
 extern char *shortDays[8];
+extern char *shortMonthes[13];
 
 void toLocal(TimeStruct *time);
 
