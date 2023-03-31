@@ -5,3 +5,4 @@ PORT := /dev/ttyUSB0
 LIBRARY_PATH := ..
 ARDUINO_CLI_UPLOAD_OPTS=-v
 # ARDUINO_CLI_COMPILE_OPTS=-v
+MAIN_SOURCE := example/example.ino
