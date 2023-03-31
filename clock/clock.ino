@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "ds3231.h"
+#include "ledMatrix.h"
 #include "buttons.h"
 
 #define HAVE_SERIAL
@@ -27,19 +28,27 @@ void setup() {
 #endif
 }
 
-void displayTime() {
-    TimeStruct time;
-    rtc.getTime(&time);
-    toLocal(&time);
+void displayTime(TimeStruct *time) {
+
+#ifdef HAVE_SERIAL
+    Serial.print(time.hours); Serial.print(':');
+    Serial.print(time.minutes); Serial.print(':');
+    Serial.print(time.seconds); Serial.println();
+#endif
+}
+
+void displayDay(TimeStruct *time) {
 
 #ifdef HAVE_SERIAL
     Serial.print(shortDays[time.dayOfWeek]); Serial.print(' ');
     Serial.print(time.dayOfMonth); Serial.print(' ');
+#endif
+}
+
+void displayMonth(TimeStruct *time) {
+#ifdef HAVE_SERIAL
     Serial.print(shortMonthes[time.month]); Serial.print(' ');
     Serial.print(time.year); Serial.print(' ');
-    Serial.print(time.hours); Serial.print(':');
-    Serial.print(time.minutes); Serial.print(':');
-    Serial.print(time.seconds); Serial.println();
 #endif
 }
 
@@ -55,6 +64,24 @@ ISR(PCINT1_vect) {
     buttonChange = 1;
 }
 
+void updateDisplay() {
+    TimeStruct time;
+    rtc.getTime(&time);
+    toLocal(&time);
+
+    switch(button) {
+        case 0:
+            displayTime(&time);
+        break;
+        case 1:
+            displayDay(&time);
+        break;
+        case 2:
+            displayMonth(&time);
+        break;
+    }
+}
+
 void loop() {
 #ifdef HAVE_SERIAL
     if (buttonChange) {
@@ -62,11 +89,12 @@ void loop() {
         byte button = buttons.read();
         if (button != NO_BUTTON_CHANGE) {
             Serial.print("Button "); Serial.println(button);
+            updateDisplay();
         }
 #endif
     }
-    if (clockTick) {
-        displayTime();
+    if (clockTick && button == 0) {
+        updateDisplay();
         clockTick = 0;
     }
 }
