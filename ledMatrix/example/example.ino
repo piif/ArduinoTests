@@ -5,13 +5,13 @@
 
 // test MAX7219 chained led matrix 8x8xN
 
-#define MATRIX_CLK 5
-#define MATRIX_CS  6
-#define MATRIX_DIN 7
+#define MATRIX_DIN A4
+#define MATRIX_CLK A2
+#define MATRIX_CS  A1
 
-#define WIDTH 4
+#define WIDTH 12
 
-LedMatrix ledMatrix(WIDTH, MATRIX_CLK, MATRIX_CS, MATRIX_DIN);
+LedMatrix ledMatrix(WIDTH, MATRIX_CLK, MATRIX_CS, MATRIX_DIN, 2);
 
 byte testBuffer[] = {
     // 0x03, 0x06, 0x0C, 0x18, 0x30, 0x60, 0xC0, 0x81
@@ -26,13 +26,14 @@ void setup() {
     for (byte i=0; i<8; i++) {
         ledMatrix.sendCommand(i+1, testBuffer[i], WIDTH);
     }
+    ledMatrix.flush();
 }
 
-char buffer[15];
+char buffer[25];
 byte i = 0;
 
 void loop() {
-    if (i >= 15) {
+    if (i >= 25) {
         i = 0;
     }
     int c = Serial.read();

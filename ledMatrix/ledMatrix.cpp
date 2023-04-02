@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "ledMatrix.h"
-#include "font7.h"
+#include "font8.h"
 
 LedMatrix::LedMatrix(byte _width, byte _clk, byte _cs, byte _din, byte _intensity = 2) {
     width = _width;
@@ -17,6 +17,7 @@ LedMatrix::LedMatrix(byte _width, byte _clk, byte _cs, byte _din, byte _intensit
 
     clear();
 
+    sendCommand(0xF, 0, width); // normal mode
     sendCommand(0x9, 0, width); // clear decode mode
     sendCommand(0xA, _intensity, width); // set intensity
     sendCommand(0xB, 7, width); // set scan limit
@@ -82,8 +83,9 @@ int LedMatrix::drawString(int X, char *str) {
 void LedMatrix::dumpMatrix(Stream &stream) {
     for(byte y=0; y<8; y++) {
         for(byte x=0; x<width; x++) {
+            byte b = matrix[x+y*width];
             for(byte mask = 0x80; mask; mask >>= 1) {
-                stream.print(matrix[x+y*width] & mask ? '#' : ' ');
+                stream.print(b & mask ? '#' : ' ');
             }
         }
         stream.println();
