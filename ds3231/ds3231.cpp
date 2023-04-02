@@ -94,6 +94,21 @@ void DS3231::setControl(byte control, byte status) {
     Wire.write(status);
     Wire.endTransmission();
 }
+byte registerRead(byte address) {
+    Wire.beginTransmission(DS3231_I2C_ADDRESS);
+    Wire.write(address);
+    Wire.endTransmission();
+
+    Wire.requestFrom(DS3231_I2C_ADDRESS, 1);
+    return (byte)(Wire.read());
+}
+
+void registerWrite(byte address, byte value) {
+    Wire.beginTransmission(DS3231_I2C_ADDRESS);
+    Wire.write(address);
+    Wire.write(value);
+    Wire.endTransmission();
+}
 
 #ifdef DS3231_DEBUG
 static char *DS3231::registerContents[0x13] = {
