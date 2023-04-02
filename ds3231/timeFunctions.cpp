@@ -4,7 +4,7 @@
 const byte lastDay[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 char *shortDays[8] = {
-    "xxx",
+    "",
     "Lun",
     "Mar",
     "Mer",
@@ -15,10 +15,10 @@ char *shortDays[8] = {
 };
 
 char *shortMonthes[13] = {
-    "xxx",
-    "Jan", "Fev" , "Mars", "Avr",
-    "Mai", "Juin", "Juil", "Aout",
-    "Sep", "Oct" , "Nov" , "Dec"
+    "",
+    "jan", "fev" , "mar" , "avr" ,
+    "mai", "juin", "juil", "aout",
+    "sep", "oct" , "nov" , "dec"
 };
 
 void nextDay(TimeStruct *time) {

@@ -18,10 +18,11 @@ public:
     void flush();
 
     byte charWidth(char c);
+    byte stringWidth(char *str);
 
     int drawChar(int X, char c);
-
     int drawString(int X, char *str);
+    void drawPixel(int X, int Y, bool value);
 
     void dumpMatrix(Stream &stream);
 

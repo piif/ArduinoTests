@@ -3,23 +3,24 @@
 
 #include <Arduino.h>
 
-#define BUTTON_INPUT A0
-
 #define DEBOUNCE_DELAY 50
 #define NO_BUTTON_CHANGE 255
 
 class Buttons {
 public:
-    Buttons() {
-        pinMode(BUTTON_INPUT, INPUT);
+    Buttons(byte _input, byte _buttonsNumber, int *_thresholds) {
+        input = _input;
+        buttonsNumber = _buttonsNumber;
+        thresholds = _thresholds;
+        pinMode(input, INPUT);
     }
 
     byte read() {
-        int v =  analogRead(BUTTON_INPUT);
+        int v =  analogRead(input);
         byte newButton = decode(v);
         if (newButton != button) {
             delay(DEBOUNCE_DELAY);
-            v =  analogRead(BUTTON_INPUT);
+            v =  analogRead(input);
             newButton = decode(v);
             if (newButton != button) {
                 button = newButton;
@@ -30,21 +31,19 @@ public:
     }
 
 private:
+    byte input;
+    byte buttonsNumber;
+    int *thresholds;
     byte button = 0;
 
     byte decode(int v) {
-        if (v > 800) {
-            return 3;
-        }
-        if (v > 600) {
-            return 2;
-        }
-        if (v > 400) {
-            return 1;
+        for (byte b = 0; b < buttonsNumber; b++) {
+            if (v > thresholds[b]) {
+                return b+1;
+            }
         }
         return 0;
     }
-
 };
 
 #endif

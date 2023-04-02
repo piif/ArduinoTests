@@ -5,9 +5,9 @@
 
 // test MAX7219 chained led matrix 8x8xN
 
-#define MATRIX_DIN A4
 #define MATRIX_CLK A2
 #define MATRIX_CS  A1
+#define MATRIX_DIN A4
 
 #define WIDTH 12
 

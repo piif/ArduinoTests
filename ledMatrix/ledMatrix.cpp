@@ -69,6 +69,14 @@ byte LedMatrix::charWidth(char c) {
     return ::charWidth(c);
 }
 
+byte LedMatrix::stringWidth(char *str) {
+    byte len = 0;
+    while (*str) {
+        len += ::charWidth(*str++);
+    }
+    return len;
+}
+
 // Given an array of 8xN bytes containing N matrices (left to right) of 8 bytes (top to bottom) of 8 bits (LSB = right)
 // Draw a char into the array, at position X (thus from bit 8-X%8 into matrix X/8)
 // return next X position (Depends on character width)
@@ -78,6 +86,20 @@ int LedMatrix::drawChar(int X, char c) {
 
 int LedMatrix::drawString(int X, char *str) {
     return ::drawString(matrix, width, X, str);
+}
+
+void LedMatrix::drawPixel(int X, int Y, bool value) {
+    byte lineOffset = X / 8;
+    if (lineOffset >= width) {
+        return;
+    }
+    byte bitOffset = X & 7;
+    byte *ptr = matrix + Y*width + lineOffset;
+    if (value) {
+        *ptr |= 0x80 >> bitOffset;
+    } else {
+        *ptr &= ~(0x80 >> bitOffset);
+    }
 }
 
 void LedMatrix::dumpMatrix(Stream &stream) {
