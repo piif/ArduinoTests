@@ -1,16 +1,38 @@
 #include "Arduino.h"
 
 void setup() {
-	pinMode(13, OUTPUT);
-	pinMode(A5, INPUT_PULLUP);
-	pinMode(A3, INPUT);
+	pinMode(A0, INPUT);
 	Serial.begin(115200);
 	Serial.println("Ready");
 }
 
+byte decode(int v) {
+	if (v > 800) {
+		return 3;
+	}
+	if (v > 600) {
+		return 2;
+	}
+	if (v > 400) {
+		return 1;
+	}
+	return 0;
+}
+
+byte button = 0;
+
 void loop() {
-//	int v =  analogRead(A5);
-	int v =  digitalRead(A5);
-	digitalWrite(13, v);
-//	Serial.println(v);
+	int v =  analogRead(A0);
+	Serial.println(v);
+	byte newButton = decode(v);
+	if (newButton != button) {
+		delay(100);
+		v =  analogRead(A0);
+		newButton = decode(v);
+		if (newButton != button) {
+			button = newButton;
+			Serial.println(button);
+		}
+	}
+	delay(500);
 }

@@ -2,6 +2,5 @@ BOARD := arduino:avr:uno
 #BOARD := arduino:avr:nano:cpu=atmega328isp
 ARDDUDE_OPTIONS := -l cr -o raw -d
 PORT := /dev/ttyUSB0
-LIBRARY_PATH := ..
+# LIBRARY_PATH := ~/GitHub/piif/ArduinoLibs ~/GitHub/piif/ArduinoTools
 ARDUINO_CLI_UPLOAD_OPTS=-v
-# ARDUINO_CLI_COMPILE_OPTS=-v
