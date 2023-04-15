@@ -1,13 +1,19 @@
+# FOR UNO
 #BOARD := arduino:avr:uno
 #PORT := /dev/ttyUSB0
+
+# FOR TINY
+BOARD := attiny:avr:ATtinyX5:cpu=attiny85,clock=internal8
+PORT := /dev/ttyUSB0
 
 #BOARD := arduino:avr:nano:cpu=atmega328isp
 #PORT := /dev/ttyUSB1
 #UPLOAD_PORT := /dev/ttyUSB0
 #BAUDRATE=19200
 
-BOARD := arduino:avr:nano:cpu=atmega328old
-PORT := /dev/ttyUSB0
+#BOARD := arduino:avr:nano:cpu=atmega328old
+#PORT := /dev/ttyUSB0
 
 ARDDUDE_OPTIONS := -l cr -o raw -d
 ARDUINO_CLI_UPLOAD_OPTS=-v
+#ARDUINO_CLI_COMPILE_OPTS=--warnings all

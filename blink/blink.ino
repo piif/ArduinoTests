@@ -8,18 +8,29 @@
 	#endif
 #endif
 
+#if defined(__AVR_ATtiny85__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny25__)
+	#define ARDUINO_TINY
+#elif defined(__AVR_MEGA__)
+	#define ARDUINO_UNO
+#endif
+
 // #define TEST_SERIAL
+#ifdef ARDUINO_TINY
+	#define TEST_TIMER
+#endif
 
 #ifdef TEST_SERIAL
-#define DEFAULT_BAUDRATE 19200
+	#define DEFAULT_BAUDRATE 19200
 #endif
 
 //TODO : comprendre de ou sort le CORE_DIR dans le makefile de arddude/target/sanguino
 
-#if defined __AVR_ATtinyX5__ || defined __AVR_ATmega644P__
-#define LED 4
+#ifdef ARDUINO_TINY
+	#define LED 4
+	#warning "Tiny"
 #else
-#define LED 13
+	#define LED 13
+	#warning "Arduino"
 #endif
 
 #define PERIOD 250
@@ -30,6 +41,18 @@ void setup(void) {
 #endif
 
 	pinMode(LED, OUTPUT);
+	pinMode(1, OUTPUT);
+
+#ifdef TEST_TIMER
+	// set Clock to 1MHz instead of 8
+	cli(); CLKPR=0x80 ; CLKPR=0x03; sei();
+
+    TCCR1 = (1 << CTC1) | (1 << PWM1A) | (1 << COM1A0) | 0xF; // reset on OCR1A match | prescale 16384
+    OCR1A = 30; // interrupt before counter reset
+    OCR1C = 61; // -> ~1s
+    GTCCR = 0;
+    TIMSK = 1 << OCIE1A;
+#endif
 
 	digitalWrite(LED, LOW);
 #ifdef TEST_SERIAL
@@ -37,8 +60,24 @@ void setup(void) {
 #endif
 }
 
+volatile bool clockTick = 0;
+
+#ifdef TEST_TIMER
+ISR(TIMER1_COMPA_vect) {
+    clockTick = 1;
+}
+#endif
+
 int count = 0;
 void loop() {
+#ifdef TEST_TIMER
+	static bool led = 1;
+	if (clockTick == 1) {
+		led = !led;
+		digitalWrite(LED, led);
+		clockTick = 0;
+	}
+#else
 	delay(PERIOD*3);
 	digitalWrite(LED, HIGH);
 #ifdef TEST_SERIAL
@@ -46,6 +85,7 @@ void loop() {
 #endif
 	delay(PERIOD);
 	digitalWrite(LED, LOW);
+#endif
 }
 
 /*
