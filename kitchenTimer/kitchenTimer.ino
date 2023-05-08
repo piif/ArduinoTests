@@ -13,7 +13,7 @@ voir https://github.com/piif/ArduinoTests/blob/master/bell.ino pour sleep mode e
 - interruption sur bouton UP
 - sleep mode
 - interruption réveille tout et fait timerValue=30
-- on décompte et +/- fonds +30 / -30
+- on décompte et +/- font +30 / -30
 - zéro => bip, puis mise en veille
 
 ensuite :
