@@ -1,10 +1,12 @@
 #include <Arduino.h>
 
-#ifndef DEFAULT_BAUDRATE
-	#ifdef __AVR_ATmega644P__
-		#define DEFAULT_BAUDRATE 19200
-	#else
-		#define DEFAULT_BAUDRATE 115200
+#ifdef TEST_SERIAL
+	#ifndef DEFAULT_BAUDRATE
+		#ifdef __AVR_ATmega644P__
+			#define DEFAULT_BAUDRATE 19200
+		#else
+			#define DEFAULT_BAUDRATE 115200
+		#endif
 	#endif
 #endif
 
@@ -19,15 +21,14 @@
 	#define TEST_TIMER
 #endif
 
-#ifdef TEST_SERIAL
-	#define DEFAULT_BAUDRATE 19200
-#endif
-
 //TODO : comprendre de ou sort le CORE_DIR dans le makefile de arddude/target/sanguino
 
-#ifdef ARDUINO_TINY
+#if defined(ARDUINO_TINY)
 	#define LED 4
 	#warning "Tiny"
+#elif defined(ARDUINO_RASPBERRY_PI_PICO)
+	#define LED LED_BUILTIN
+	#warning "Pico"
 #else
 	#define LED 13
 	#warning "Arduino"
