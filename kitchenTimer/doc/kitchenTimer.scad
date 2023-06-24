@@ -12,67 +12,116 @@
 
 $fn=100;
 
-module moveZTo(o=[0,0,0], d=[0,0,1]) {
-    echo("d = " , d[0]);
-    rx = (d.y==1) ? -90 : ((d.y==-1) ?  90 : 0);
-    ry = (d.x==1) ?  90 : ((d.x==-1) ? -90 : 0);
-    translate(o) rotate([rx, ry, 0]) children();
-}
-module moveXTo(o=[0,0,0], d=[0,0,1]) {
-    echo("d = " , d[0]);
-    ry = (d.z==1) ? -90 : ((d.z==-1) ?  90 : 0);
-    rz = (d.y==1) ?  90 : ((d.y==-1) ? -90 : 0);
-    translate(o) rotate([0, ry, rz, 0]) children();
-}
+use <tools.scad>
 
-module batteryAAA() {
+
+// Convention for a component name "xyz" :
+// - module "xyz" renders component with X & Y centered, bottom at Z=0
+// - variable "xyz_size" contains component bounding box with X & Y centered, bottom at Z=0
+// - variables "xyz_something_size" may contain sub components bounding box
+// the idea is to externalize all dimensionqs from rendering modules, to make them available for further computations
+
+batteryAAA_size = [ 10.3, 10.3, 44 ];
+batteryAAA_pin_size = [ 4, 4, 1.5 ];
+module batteryAAA(bbox=false) {
     color("brown") union() {
-        cylinder(d=4, h=44, center=false);
-        cylinder(d=10.3, h=42.5, center=false);
+        cylinder(d=batteryAAA_pin_size.x, h=batteryAAA_size.z);
+        cylinder(d=batteryAAA_size.x, h=batteryAAA_size.z - batteryAAA_pin_size.z);
+    }
+    if (bbox) {
+        color("gold", 0.5) Z0cube(batteryAAA_size);
     }
 }
-module screen() {
-    color("white") cube([38, 7, 19], center=true);
+
+screen_size = [ 38, 19, 7 ];
+module screen(bbox=false) {
+    color("white") Z0cube(screen_size);
+    if (bbox) {
+        color("gold", 0.5) Z0cube(screen_size);
+    }
 }
 
-module button() {
-    // 6, 3.3, 4, 7
-    color("black")
-        union() {
-            translate([0, 0, 4/2]) cube([6, 6, 4], center=true);
-            translate([0, 0, 7/2]) cylinder(d=3.3, h=7, center=true);
-        }
+button_size = [ 6, 6, 7 ];
+button_top_size = [ 3.3, 3.3, 3 ];
+module button(bbox=false) {
+    bottom = button_size.z - button_top_size.z;
+    union() {
+        color("silver") Z0cube([ button_size.x, button_size.y, bottom ]);
+        color("black") cylinder(d=button_top_size.x, h=button_size.z);
+    }
+    if (bbox) {
+        color("gold", 0.5) Z0cube(button_size);
+    }
 }
 
-module nano() {
+nano_plate_size = [ 43, 17.5, 1.5 ];
+nano_usb_plug_size = [ 9.5, 7.5, 4 ];
+nano_usb_plug_delta = 2;
+nano_ICSP_plug_size = [ 5, 8, 9 ];
+nano_size = [ nano_plate_size.x+nano_usb_plug_delta, nano_plate_size.y, nano_plate_size.z + max(nano_usb_plug_size.z, nano_ICSP_plug_size.z) ];
+module nano(bbox=false) {
     union() {
         // plate
-        color("blue") translate([-43/2, -17.5/2, 0]) cube([43, 17.5, 1.5]);
+        color("blue") translate([ nano_usb_plug_delta/2, 0, 0]) Z0cube(nano_plate_size);
         // usb plug
-        color("silver") translate([-43/2-1.5, -7.5/2, 1.5]) cube([9.5, 7.5, 4]);
+        color("silver")
+            // USB plug on left of plate, but outside of nano_usb_plug_delta
+            translate([ (nano_usb_plug_size.x-nano_plate_size.x)/2 - nano_usb_plug_delta/2, 0, nano_plate_size.z ])
+            Z0cube(nano_usb_plug_size);
         // ICSP plug
-        color("black") translate([43/2-5, -8/2, 1.5]) cube([5, 8, 9]);
+        color("black")
+            translate([ (nano_plate_size.x - nano_ICSP_plug_size.x)/2 + nano_usb_plug_delta/2, 0, nano_plate_size.z ])
+            Z0cube(nano_ICSP_plug_size);
+    }
+    if (bbox) {
+        color("gold", 0.2) Z0cube(nano_size);
     }
 }
 
-module magnet() {
-    color("silver") translate([0, 1.5, 0]) cube([23, 3, 11], center=true);
+magnet_size = [ 23, 11, 3 ];
+module magnet(bbox=false) {
+    color("silver") Z0cube(magnet_size);
 }
 
+circuit_plate_size = [41, 17, 1.6];
+circuit_b1_pos = [ -12, -1.25, circuit_plate_size.z/2 ];
+circuit_b2_pos = [  12, -1.25, circuit_plate_size.z/2 ];
 module circuit() {
     color([0, 0.7, 0])
-        translate([0, 0, -1.6/2]) cube([41, 17, 1.6], center=true);
-    translate([-12, -1.25, 0]) button();
-    translate([ 12, -1.25, 0]) button();
+        Z0cube(circuit_plate_size);
+    translate(circuit_b1_pos) button(bbox);
+    translate(circuit_b2_pos) button(bbox);
 }
 
+between_nano_and_screen = [ (screen_size.x-nano_size.x)/2 + 3, -5, (screen_size.y-nano_size.y)/2 + 1 ];
+screen_bbox = computeBbox(screen_size, d=[ 0, -1, 0 ], t=between_nano_and_screen);
+nano_bbox = computeBbox(nano_size, d=[ 0, 1, 0 ]);
 module nanoAndScreen() {
-    moveZTo(d=[0,1,0]) nano();
-    translate([0, -7/2 -5, 0]) screen();
+    moveZTo(d=[ 0,  1, 0 ])
+        nano(bbox);
+    translate(between_nano_and_screen)
+        moveZTo(d=[ 0, -1, 0 ])
+        screen(bbox);
 }
+
+// components position
+
+bbox=false;
+
+nanoAndScreen();
+
+// bounding box before translation
+circuit_bbox_0 = computeBbox(circuit_plate_size);
+// align front with screen , stack on top of screen
+circuit_translation =
+      align(target = circuit_bbox_0, source = screen_bbox, d = [0, -1, 0], margin = 0)
+    + stack(target = circuit_bbox_0, source = screen_bbox, d = [0,  0, 1], margin = 1);
+
+moveZTo(o=circuit_translation, d=[0,0,1]) circuit();
 
 moveZTo(o=[-22, 11,  10], d=[ 1,0,0]) batteryAAA();
 moveZTo(o=[ 22, 11, -10], d=[-1,0,0]) batteryAAA();
-nanoAndScreen();
-translate([0, 17/2-12, 12]) circuit();
-translate([0, 16, 0]) magnet();
+
+moveZTo(o=[  0, 16,   0], d=[ 0,1,0]) magnet();
+
+// showBBox(unionBbox(screen_bbox, nano_bbox));
