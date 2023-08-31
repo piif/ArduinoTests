@@ -5,17 +5,32 @@
 	#define DEFAULT_BAUDRATE 115200
 #endif
 
-#define STEP_A  5
-#define STEP_B  6
-#define STEP_C  9
-#define STEP_D 10
-#define ENABLE_1 4
-#define ENABLE_2 8
+#define STEP_A  8
+#define STEP_B  9
+#define STEP_C 10
+#define STEP_D 11
+#define ENABLE_1 3
+#define ENABLE_2 3
 
-byte fullSteps[] = { 0x1, 0x2, 0x4, 0x8 };
-byte halfSteps[] = { 0x1, 0x3, 0x2, 0x6, 0x4, 0xc, 0x8, 0x9  };
+byte fullSteps[] = {
+	0b0001, 0b0010, 0b0100, 0b1000
+};
+byte halfSteps[] = {
+	0b0001, 0b0011, 0b0010, 0b0110,
+	0b0100, 0b1100, 0b1000, 0b1001
+};
 
-bool full;     // send half/full steps
+byte quarterSteps[] = {
+	0b10010010, 0b00000010, 0b01000010, 0b01010010,
+	0b01001010, 0b00001000, 0b00011010, 0b01011010,
+	0b00011000, 0b00100000, 0b01101000, 0b01011000,
+	0b01100000, 0b10000000, 0b10010000, 0b01010000,
+};
+byte heighthSteps[] = {
+	// TODO : 0 = low, 1= pwm 33%, 2= pwm 66%, 3= high
+};
+
+enum { FULL, HALF, QUARTER, HEIGHTH } mode = FULL;     // send half/full steps
 byte maxSteps; // how many steps combinations
 byte *steps;   // current step list
 byte step;     // current step
@@ -44,16 +59,28 @@ void setSpeed(int s) {
 	nextStep = 0;
 }
 
+void setFull() {
+	mode = FULL;
+	steps = fullSteps;
+	maxSteps = sizeof(fullSteps) - 1;
+}
+
 void setHalf() {
-	full = false;
+	mode = HALF;
 	steps = halfSteps;
 	maxSteps = sizeof(halfSteps) - 1;
 }
 
-void setFull() {
-	full = true;
-	steps = fullSteps;
-	maxSteps = sizeof(fullSteps) - 1;
+void setQuarter() {
+	mode = QUARTER;
+	steps = quarterSteps;
+	maxSteps = sizeof(quarterSteps) - 1;
+}
+
+void setHeighth() {
+	mode = HEIGHTH;
+	steps = heighthSteps;
+	maxSteps = sizeof(heighthSteps) - 1;
 }
 
 void doStep() {
@@ -64,10 +91,25 @@ void doStep() {
 	// Serial.print("Step ");Serial.print(steps[step], BIN);Serial.print(" / ");Serial.print(maxSteps);Serial.print(" @ ");Serial.println(now);
 	nextStep = now + speed;
 
-	digitalWrite(STEP_A, steps[step] & 1);
-	digitalWrite(STEP_B, steps[step] & 2);
-	digitalWrite(STEP_C, steps[step] & 4);
-	digitalWrite(STEP_D, steps[step] & 8);
+	if (mode == FULL || mode == HALF) {
+		digitalWrite(STEP_A, steps[step] & 1);
+		digitalWrite(STEP_B, steps[step] & 2);
+		digitalWrite(STEP_C, steps[step] & 4);
+		digitalWrite(STEP_D, steps[step] & 8);
+	} else {
+		digitalWrite(STEP_A, steps[step] & 0x02);
+		digitalWrite(STEP_B, steps[step] & 0x08);
+		if (steps[step] & 0x10) {
+			analogWrite(STEP_C, 128);
+		} else {
+			digitalWrite(STEP_C, steps[step] & 0x20);
+		}
+		if (steps[step] & 0x40) {
+			analogWrite(STEP_D, 128);
+		} else {
+			digitalWrite(STEP_D, steps[step] & 0x80);
+		}
+	}
 
 	if (clockwise) {
 		step = (step + 1) & maxSteps;
@@ -97,8 +139,10 @@ void doNStep(int n) {
 InputItem inputs[] = {
 	{ 's', 'I', (void *)setSpeed  },
 	{ 'n', 'I', (void *)doNStep  },
+	{ 'f', 'f', (void *)setFull },
 	{ 'h', 'f', (void *)setHalf },
-	{ 'f', 'f', (void *)setFull }
+	{ '4', 'f', (void *)setQuarter },
+	{ '8', 'f', (void *)setHeighth }
 };
 
 void setup() {
