@@ -79,12 +79,12 @@ void loop() {
 		clockTick = 0;
 	}
 #else
-	delay(PERIOD*3);
+	delay(PERIOD);
 	digitalWrite(LED, HIGH);
 #ifdef TEST_SERIAL
 	Serial.print("count = ");Serial.println(count++);
 #endif
-	delay(PERIOD);
+	delay(PERIOD*3);
 	digitalWrite(LED, LOW);
 #endif
 }
