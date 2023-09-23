@@ -2,6 +2,8 @@
 BOARD := arduino:avr:uno
 PORT := /dev/ttyUSB0
 
+LIBRARY_PATH := ${ARDUINO_IDE}/libraries/
+
 ARDDUDE_OPTIONS := -l cr -o raw -d
 ARDUINO_CLI_UPLOAD_OPTS=-v
 ARDUINO_CLI_COMPILE_OPTS=--warnings all

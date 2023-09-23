@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+// #define TEST_SERIAL
 #ifdef TEST_SERIAL
 	#ifndef DEFAULT_BAUDRATE
 		#ifdef __AVR_ATmega644P__
@@ -16,7 +17,6 @@
 	#define ARDUINO_UNO
 #endif
 
-// #define TEST_SERIAL
 #ifdef ARDUINO_TINY
 	#define TEST_TIMER
 #endif
