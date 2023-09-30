@@ -75,8 +75,8 @@ après activation du sleep mode + désoudage (arrachage ...) de la puce USB et d
 #define B_OTHER 0xE0
 #define D_OTHER 0x03
 
-#define BUTTON_DOWN    A0
-#define BUTTON_UP      A1
+#define BUTTON_DOWN    A4
+#define BUTTON_UP      A5
 
 #define SPEAKER A3
 
@@ -97,8 +97,6 @@ enum {
     RINGING,
     STOPPING
 } status = OFF;
-
-#define TIMER_STEP 5 // 30
 
 // value currently displayed
 // current display is :
@@ -362,9 +360,9 @@ void sleepMode() {
     PRR = _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRTWI) | _BV(PRSPI) | _BV(PRUSART0) | _BV(PRADC);
 #endif
 
-    // listen Pin change on 9 (A1)
+    // listen Pin change 13 (=A5)
     PCMSK0 = 0;
-    PCMSK1 = _BV(PCINT9);
+    PCMSK1 = _BV(PCINT13);
     PCMSK2 = 0;
     PCICR = _BV(PCIE1); // listen for PCINT[14:8]
 
