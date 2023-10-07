@@ -1,11 +1,20 @@
 # FOR UNO
-BOARD := arduino:avr:uno
-#PORT := /dev/ttyUSB0
-PORT := /dev/ttyACM0
+#BOARD := arduino:avr:uno
+##PORT := /dev/ttyUSB0
+#PORT := /dev/ttyACM0
 
 # FOR TINY
 #BOARD := attiny:avr:ATtinyX5:cpu=attiny85,clock=internal8
 #PORT := /dev/ttyUSB0
+
+# FOR NANO thru ArduinoISP
+BOARD := arduino:avr:nano:cpu=atmega328isp
+PORT := /dev/ttyUSB0
+UPLOAD_PORT := /dev/ttyACM0
+BAUDRATE=115200 # 19200
+#PORT := /dev/ttyUSB1
+#UPLOAD_PORT := /dev/ttyUSB0
+#BAUDRATE := 19200
 
 # FOR NANO
 #BOARD := arduino:avr:nano:cpu=atmega328

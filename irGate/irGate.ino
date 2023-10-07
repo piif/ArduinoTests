@@ -19,6 +19,7 @@
 #define GATE_DOWN  20
 #define GATE_UP    35
 #define GATE_DELAY 1200
+#define OUTGOING_DELAY 1000
 
 void setGate(byte gatePosition) {
 	OCR2A = gatePosition;
@@ -56,6 +57,7 @@ void setup(void) {
 bool ir1Cut, ir2Cut;
 
 enum { VEHICULE_OUT, VEHICULE_INCOMING, VEHICULE_IN, VEHICULE_OUTGOING } state = VEHICULE_OUT;
+unsigned long stateTimestamp = 0;
 
 void loop() {
 	bool newIr1 = analogRead(IR_1) > 1000;
@@ -78,23 +80,27 @@ void loop() {
 			case VEHICULE_OUT:
 				if (cut) {
 					state = VEHICULE_INCOMING;
+					stateTimestamp = millis();
 					setGate(GATE_UP);
 				}
 			break;
 			case VEHICULE_INCOMING:
 				if (!cut) {
 					state = VEHICULE_IN;
+					stateTimestamp = millis();
 				}
 			break;
 			case VEHICULE_IN:
 				if (cut) {
 					state = VEHICULE_OUTGOING;
+					stateTimestamp = millis();
 				}
 			break;
 			case VEHICULE_OUTGOING:
-				if (!cut) {
+				if (!cut && millis() > stateTimestamp + OUTGOING_DELAY) {
 					setGate(GATE_DOWN);
 					state = VEHICULE_OUT;
+					stateTimestamp = millis();
 				}
 			break;
 		}
