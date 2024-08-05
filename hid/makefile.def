@@ -1,0 +1,41 @@
+# FOR UNO
+BOARD := arduino:avr:uno
+#PORT := /dev/ttyUSB0
+PORT := /dev/ttyACM0
+
+# FOR TINY
+#BOARD := attiny:avr:ATtinyX5:cpu=attiny85,clock=internal8
+#PORT := /dev/ttyUSB0
+
+# FOR PICO
+#BOARD := arduino:mbed_rp2040:pico
+### TODO : adapt arddude to allow no port at all
+#PORT := /dev/ttyACM0
+
+# FOR NANO thru ArduinoISP
+#BOARD := arduino:avr:nano:cpu=atmega328isp
+#PORT := /dev/ttyUSB0
+#UPLOAD_PORT := /dev/ttyACM0
+#BAUDRATE=115200 # 19200
+#PORT := /dev/ttyUSB1
+#UPLOAD_PORT := /dev/ttyUSB0
+#BAUDRATE := 19200
+
+# FOR NANO
+#BOARD := arduino:avr:nano:cpu=atmega328
+#PORT := /dev/ttyUSB0
+#UPLOAD_PORT := /dev/ttyUSB0
+#BAUDRATE=19200
+
+# ??
+#BOARD := arduino:avr:nano:cpu=atmega328old
+#PORT := /dev/ttyUSB0
+
+# FOR FIO
+#BOARD := arduino:avr:fio:cpu=fioisp
+#PORT := /dev/ttyACM0
+
+ARDDUDE_OPTIONS := -l cr -o raw -d
+ARDUINO_CLI_UPLOAD_OPTS=-v
+ARDUINO_CLI_COMPILE_OPTS=--warnings all
+#ARDUINO_CLI_COMPILE_OPTS=--warnings all --build-property build.extra_flags="-DTEST_SERIAL"
