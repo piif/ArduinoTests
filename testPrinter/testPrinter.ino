@@ -8,10 +8,15 @@
 #define M_X_EN  3
 #define M_X_A  5
 #define M_X_B  6
+#define M_X_SPEED 250
+#define X_MAX 5000
 
 #define M_Y_EN 11
 #define M_Y_A  9
 #define M_Y_B 10
+#define M_Y_SPEED 200
+#define Y_MAX 100000
+#define Y_MARGIN 8000 // distance between paper entry and pen
 
 #define FORK_X_A A0
 #define FORK_X_B A1
@@ -20,17 +25,20 @@
 #define FORK_Y_B A3
 
 #define FORK_P A4 // 0 means paper is present , 1 = no paper
-#define FORK_H A5 // 0 means head is at end
+#define FORK_H A5 // 1 means head is at left end
 #define PAPER_LED 13
 
 // #define PWM_ON_ENABLE
 
+// TODO : add "set idle" + handle serial input ?
+#define WAIT_FOR(condition) do { } while(!(condition))
+
 int speedX = 0, speedY = 0;
 volatile byte forkX = 0, forkY = 0;
 volatile long posX = 0, posY = 0;
-volatile byte paperSensor = 0, headSensor = 0;
+volatile byte paperSensor = 0; // 0 means paper is present , 1 = no paper
+volatile byte headSensor = 0;  // 1 means head is at left end
 
-#define X_MAX 5000
 
 void setSpeedX(int v) {
     speedX = v;
@@ -100,11 +108,6 @@ void setSpeedY(int v) {
 volatile byte errX[ERR_LEN], errY[ERR_LEN];
 volatile byte errXIdx = 0, errYIdx = 0;
 
-// -1 = do nothing
-// 1 = stop motor if headSensor change to 1 then reset to -1
-// 0 = stop motor if headSensor change to 0 then reset to -1
-volatile short stopOnHeadSensor = -1;
-
 ISR(PCINT1_vect) {
     // TODO : ajouter un default pour empiler les erreurs dans un tableau
     // et l'afficher avec le status 
@@ -163,10 +166,6 @@ ISR(PCINT1_vect) {
     byte h = digitalRead(FORK_H);
     if (h != headSensor) {
         headSensor = h;
-        if (stopOnHeadSensor != -1 && stopOnHeadSensor == headSensor) {
-            setSpeedX(0);
-            stopOnHeadSensor = -1;
-        }
     }
 }
 
@@ -199,46 +198,79 @@ void status() {
 }
 
 void initHead() {
-    // if volatile already 1, move to right until headSensor == 1
+    // if headSensor already 1, move to right until headSensor == 1
     if (headSensor == 1) {
         posX = 0;
-        stopOnHeadSensor = 0;
-        setSpeedX(250);
-    }
-    while(stopOnHeadSensor != -1) {
-        // µsleep ?
+        Serial.println("WAIT_FOR(headSensor == 0)");
+        setSpeedX(M_X_SPEED);
+        WAIT_FOR(headSensor == 0);
+        setSpeedX(0);
+        Serial.println("ok");
     }
 
     // move to left until headSensor == 1
-    stopOnHeadSensor = 1;
-    setSpeedX(-250);
-    while(stopOnHeadSensor != -1) {
-        // µsleep ?
+    Serial.println("WAIT_FOR(headSensor == 1)");
+    setSpeedX(-M_X_SPEED);
+    WAIT_FOR(headSensor == 1);
+    setSpeedX(0);
+    Serial.println("ok");
+
+    Serial.println("WAIT_FOR(posX >= X_MAX)");
+    setSpeedX(M_X_SPEED);
+    WAIT_FOR(posX >= X_MAX);
+    setSpeedX(0);
+    Serial.println("ok");
+
+    Serial.println("WAIT_FOR(posX <= 0 || headSensor == 1)");
+    setSpeedX(-M_X_SPEED);
+    WAIT_FOR(posX <= 0 || headSensor == 1);
+    setSpeedX(0);
+    Serial.println("ok");
+
+    // if headSensor == 1 while X far from 0, it's a problem
+    status();
+}
+
+void feedPaper() {
+    // if no paper present, abort
+    if (paperSensor == 1) {
+        Serial.println("No paper");
+        return;
     }
 
-    // // move to right X_MAX steps
-    // setSpeedX(250);
-    // while(posX < X_MAX) {
-    //     // µsleep ?
-    // }
-    // setSpeedX(0);
+    // feed paper until paperSensor == 1 (end of sheet)
+    posY=0;
+    Serial.println("WAIT_FOR(paperSensor == 1)");
+    setSpeedY(M_Y_SPEED);
+    WAIT_FOR(paperSensor == 1 || posY >= Y_MAX);
+    Serial.println("ok");
 
-    // // move to left X_MAX steps or headSensor == 1
-    // setSpeedX(-250);
-    // while(posX > 0 and headSensor != 1) {
-    //     // µsleep ?
-    // }
-    // setSpeedX(0);
+    if (posY >= Y_MAX) {
+        setSpeedY(0);
+        Serial.println("can't find end of paper ?");
+        return;
+    }
 
-    // if headSensor == 1 while X high, it's a problem
+    // move paper back until page bottom
+    Serial.println("posY <= Y_MARGIN");
+    setSpeedY(-M_Y_SPEED);
+    WAIT_FOR(posY <= Y_MARGIN); // todo : or paperSensor==1 , but needs to rollback until 0 before
+    setSpeedY(0);
+    Serial.println("ok");
+
     status();
+
+    // consider this as new 0
+    posY=0;
+
 }
 
 InputItem inputs[] = {
 	{ '?', 'f', (void *)status },
 	{ 'x', 'I', (void *)setSpeedX },
 	{ 'y', 'I', (void *)setSpeedY },
-	{ 'h', 'f', (void *)initHead },
+	{ 'h', 'f', (void *)initHead  },
+	{ 'f', 'f', (void *)feedPaper },
 };
 
 void setup() {
