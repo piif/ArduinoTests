@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <avr/sleep.h>
 #include <serialInput.h>
 
 #ifndef DEFAULT_BAUDRATE
@@ -8,8 +9,8 @@
 #define M_X_EN  3
 #define M_X_A  5
 #define M_X_B  6
-#define M_X_SPEED 250
-#define X_MAX 5000
+#define M_X_SPEED 200
+#define X_MAX 6500
 
 #define M_Y_EN 11
 #define M_Y_A  9
@@ -31,7 +32,17 @@
 // #define PWM_ON_ENABLE
 
 // TODO : add "set idle" + handle serial input ?
-#define WAIT_FOR(condition) do { } while(!(condition))
+#define WAIT_FOR(condition)               \
+    do {                                  \
+        set_sleep_mode(SLEEP_MODE_IDLE);  \
+        sleep_mode();                     \
+        if (condition) {                  \
+            break;                        \
+        }                                 \
+        if (Serial.available()) {         \
+            break;                        \
+        }                                 \
+    } while(1)
 
 int speedX = 0, speedY = 0;
 volatile byte forkX = 0, forkY = 0;
@@ -70,6 +81,40 @@ void setSpeedX(int v) {
         digitalWrite(M_X_EN, 1);
    }
 #endif
+}
+
+void moveX(int delta) {
+    long target = posX + delta;
+    if (delta == 0 || target > X_MAX || target < 0) {
+        Serial.print(target); Serial.println(" none or out of range");
+        return;
+    }
+    if (delta > 0) {
+        setSpeedX(M_X_SPEED);
+        WAIT_FOR(posX >= target);
+        setSpeedX(0);
+    } else {
+        setSpeedX(-M_X_SPEED);
+        WAIT_FOR(posX <= target);
+        setSpeedX(0);
+    }
+}
+
+void moveY(int delta) {
+    long target = posY + delta;
+    if (delta == 0 || target > Y_MAX || target < Y_MARGIN) {
+        Serial.print(target); Serial.println(" none or out of range");
+        return;
+    }
+    if (delta > 0) {
+        setSpeedY(M_Y_SPEED);
+        WAIT_FOR(posY >= target);
+        setSpeedY(0);
+    } else {
+        setSpeedY(-M_Y_SPEED);
+        WAIT_FOR(posY <= target);
+        setSpeedY(0);
+    }
 }
 
 void setSpeedY(int v) {
@@ -187,6 +232,7 @@ void status() {
             Serial.print(errX[errXIdx % ERR_LEN], BIN); Serial.print(' ');
         }
         Serial.println();
+        errXIdx = 0;
     }
     if (errYIdx != 0) {
         Serial.print(errYIdx);Serial.println(" Y errors");
@@ -194,6 +240,7 @@ void status() {
             Serial.print(errY[errYIdx % ERR_LEN], BIN); Serial.print(' ');
         }
         Serial.println();
+        errYIdx = 0;
     }
 }
 
@@ -205,7 +252,7 @@ void initHead() {
         setSpeedX(M_X_SPEED);
         WAIT_FOR(headSensor == 0);
         setSpeedX(0);
-        Serial.println("ok");
+        Serial.print("-> ok ");Serial.println(posX);
     }
 
     // move to left until headSensor == 1
@@ -213,19 +260,21 @@ void initHead() {
     setSpeedX(-M_X_SPEED);
     WAIT_FOR(headSensor == 1);
     setSpeedX(0);
-    Serial.println("ok");
+    Serial.print("<- ok ");Serial.println(posX);
+    posX = 0;
 
     Serial.println("WAIT_FOR(posX >= X_MAX)");
     setSpeedX(M_X_SPEED);
     WAIT_FOR(posX >= X_MAX);
     setSpeedX(0);
+    Serial.print("==> ok ");Serial.println(posX);
     Serial.println("ok");
 
     Serial.println("WAIT_FOR(posX <= 0 || headSensor == 1)");
     setSpeedX(-M_X_SPEED);
     WAIT_FOR(posX <= 0 || headSensor == 1);
     setSpeedX(0);
-    Serial.println("ok");
+    Serial.print("<== ok ");Serial.println(posX);
 
     // if headSensor == 1 while X far from 0, it's a problem
     status();
@@ -269,6 +318,8 @@ InputItem inputs[] = {
 	{ '?', 'f', (void *)status },
 	{ 'x', 'I', (void *)setSpeedX },
 	{ 'y', 'I', (void *)setSpeedY },
+	{ 'X', 'I', (void *)moveX },
+	{ 'Y', 'I', (void *)moveY },
 	{ 'h', 'f', (void *)initHead  },
 	{ 'f', 'f', (void *)feedPaper },
 };
@@ -311,5 +362,7 @@ void setup() {
 }
 
 void loop() {
+    set_sleep_mode(SLEEP_MODE_IDLE);
+    sleep_mode();
 	handleInput();
 }
