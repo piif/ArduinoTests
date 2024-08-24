@@ -11,7 +11,7 @@ class Axis {
         // position sensor :
         byte forkPinA, forkPinB;
         // end of track sensor :
-        byte sensorPin;
+        byte sensorPin, sensorMode;
         // output pin to echo end of track sensor (-1 if none)
         short echoPin = -1;
 
@@ -20,7 +20,7 @@ class Axis {
         Axis(
             byte motorPinEnable, byte motorPinA, byte motorPinB,
             byte forkPinA, byte forkPinB,
-            byte sensorPin, short echoPin = -1);
+            byte sensorPin, byte sensorMode = INPUT_PULLUP, short echoPin = -1);
 
         int speed = 0;
         long positionMax, positionMin;

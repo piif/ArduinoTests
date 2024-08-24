@@ -38,7 +38,7 @@ Axis xAxis(
 Axis yAxis(
     M_Y_EN, M_Y_A, M_Y_B,
     FORK_Y_A, FORK_Y_B,
-    FORK_P, PAPER_LED);
+    FORK_P, PAPER_LED); // INPUT, 
 
 ISR(PCINT1_vect) {
     xAxis.updateState();

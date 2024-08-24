@@ -5,25 +5,16 @@
 Axis::Axis(
         byte p_motorPinEnable, byte p_motorPinA, byte p_motorPinB,
         byte p_forkPinA, byte p_forkPinB,
-        byte p_sensorPin, short p_echoPin = -1):
+        byte p_sensorPin, byte p_sensorMode = INPUT_PULLUP, short p_echoPin = -1):
     motorPinEnable(p_motorPinEnable),
     motorPinA(p_motorPinA),
     motorPinB(p_motorPinB),
     forkPinA(p_forkPinA),
     forkPinB(p_forkPinB),
     sensorPin(p_sensorPin),
+    sensorMode(p_sensorMode),
     echoPin(p_echoPin)
 {
-	pinMode(motorPinEnable, OUTPUT);
-	pinMode(motorPinA,      OUTPUT);
-	pinMode(motorPinB,      OUTPUT);
-	pinMode(forkPinA,       INPUT);
-	pinMode(forkPinB,       INPUT);
-	pinMode(sensorPin,      INPUT_PULLUP);
-    if (echoPin != -1) {
-    	pinMode(echoPin, OUTPUT);
-    }
-
     forkState = ((digitalRead(forkPinA) & 1) << 1) | (digitalRead(forkPinB) & 1);
     sensorState = digitalRead(sensorPin);
     if (echoPin != -1) {
@@ -37,7 +28,7 @@ void Axis::begin() {
 	pinMode(motorPinB,      OUTPUT);
 	pinMode(forkPinA,       INPUT);
 	pinMode(forkPinB,       INPUT);
-	pinMode(sensorPin,      INPUT_PULLUP);
+	pinMode(sensorPin,      sensorMode);
     if (echoPin != -1) {
     	pinMode(echoPin, OUTPUT);
     }
