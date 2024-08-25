@@ -35,6 +35,19 @@ class Axis {
         void begin();
         void setSpeed(int v);
         void stop() {
+            // if (speed == highSpeed) {
+            //     setSpeed(-highSpeed);
+            //     delay(10);
+            // } else if (speed == -highSpeed) {
+            //     setSpeed(highSpeed);
+            //     delay(10);
+            // } else if (speed == lowSpeed) {
+            //     setSpeed(-lowSpeed);
+            //     delay(5);
+            // } else if (speed == -lowSpeed) {
+            //     setSpeed(lowSpeed);
+            //     delay(5);
+            // }
             setSpeed(0);
         }
         void setHighSpeed(short dir) {

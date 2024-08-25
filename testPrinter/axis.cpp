@@ -14,13 +14,7 @@ Axis::Axis(
     sensorPin(p_sensorPin),
     sensorMode(p_sensorMode),
     echoPin(p_echoPin)
-{
-    forkState = ((digitalRead(forkPinA) & 1) << 1) | (digitalRead(forkPinB) & 1);
-    sensorState = digitalRead(sensorPin);
-    if (echoPin != -1) {
-    	digitalWrite(echoPin, sensorState);
-    }
-}
+{ }
 
 void Axis::begin() {
    	pinMode(motorPinEnable, OUTPUT);
@@ -32,6 +26,8 @@ void Axis::begin() {
     if (echoPin != -1) {
     	pinMode(echoPin, OUTPUT);
     }
+
+    stop();
 
     forkState = ((digitalRead(forkPinA) & 1) << 1) | (digitalRead(forkPinB) & 1);
     sensorState = digitalRead(sensorPin);
@@ -73,12 +69,15 @@ void Axis::setSpeed(int v) {
 
 }
 
+#define USE_LOW_HIGH_SPEED
+
 void Axis::moveOf(int delta) {
     long target = position + delta;
     if (delta == 0 || target > positionMax || target < positionMin) {
         Serial.print(target); Serial.println(" none or out of range");
         return;
     }
+#ifdef USE_LOW_HIGH_SPEED
     if (delta > 200 || delta < -200) {
         long preTarget = position + (delta * .8);
         Serial << "going from " << position << EOL;
@@ -89,13 +88,11 @@ void Axis::moveOf(int delta) {
             if(WAIT_FOR(position >= preTarget)) {
                 return;
             }
-            stop();
         } else {
             setHighSpeed(-1);
             if (WAIT_FOR(position <= preTarget)) {
                 return;
             }
-            stop();
         }
     } else {
         Serial << "going from " << position << EOL;
@@ -115,6 +112,25 @@ void Axis::moveOf(int delta) {
         }
         stop();
     }
+#else
+    if (delta > 0) {
+        setHighSpeed(1);
+        if (WAIT_FOR(position >= target)) {
+            return;
+        }
+        setHighSpeed(-1);
+        delay(20);
+        stop();
+    } else {
+        setHighSpeed(-1);
+        if (WAIT_FOR(position <= target)) {
+            return;
+        }
+        setHighSpeed(1);
+        delay(20);
+        stop();
+    }
+#endif
 }
 
 void Axis::updateState() {

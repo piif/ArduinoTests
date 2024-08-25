@@ -34,11 +34,11 @@
 Axis xAxis(
     M_X_EN, M_X_A, M_X_B,
     FORK_X_A, FORK_X_B,
-    FORK_H, -1);
+    FORK_H, INPUT_PULLUP, -1);
 Axis yAxis(
     M_Y_EN, M_Y_A, M_Y_B,
     FORK_Y_A, FORK_Y_B,
-    FORK_P, PAPER_LED); // INPUT, 
+    FORK_P, INPUT_PULLUP, PAPER_LED); // INPUT, 
 
 ISR(PCINT1_vect) {
     xAxis.updateState();
@@ -165,9 +165,11 @@ void setup() {
 
     xAxis.lowSpeed = 180;  xAxis.highSpeed = 255;
     xAxis.positionMin = 0; xAxis.positionMax = X_MAX;
+    xAxis.begin();
 
     yAxis.lowSpeed = 180;  yAxis.highSpeed = 255;
     yAxis.positionMin = 0; yAxis.positionMax = Y_MAX;
+    yAxis.begin();
 
     // Listen PCINT 8,9,10,11,12,13 == interrupts on PC0,1,2,3,4,5 == A0,1,2,3,4,5
     PCMSK0 = 0;
