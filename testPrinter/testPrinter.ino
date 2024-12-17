@@ -167,7 +167,7 @@ void setup() {
     xAxis.positionMin = 0; xAxis.positionMax = X_MAX;
     xAxis.begin();
 
-    yAxis.lowSpeed = 180;  yAxis.highSpeed = 255;
+    yAxis.lowSpeed = 150;  yAxis.highSpeed = 220;
     yAxis.positionMin = 0; yAxis.positionMax = Y_MAX;
     yAxis.begin();
 
