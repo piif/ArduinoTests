@@ -1,0 +1,11 @@
+#MAIN_SOURCE:=epd2in13_V4.ino
+#LIBRARY_PATH=lib
+
+# FOR LGT8F328
+PORT := /dev/ttyUSB0
+BOARD := lgt8fx:avr:328
+BAUDRATE=115200
+
+ARDDUDE_OPTIONS := -l cr -o raw -d
+ARDUINO_CLI_UPLOAD_OPTS=-v
+ARDUINO_CLI_COMPILE_OPTS=--warnings all
