@@ -8,4 +8,4 @@ BAUDRATE=115200
 
 ARDDUDE_OPTIONS := -l cr -o raw -d
 ARDUINO_CLI_UPLOAD_OPTS=-v
-ARDUINO_CLI_COMPILE_OPTS=--warnings all
+ARDUINO_CLI_COMPILE_OPTS=--warnings all --build-property "build.extra_flags=-DINCLUDE_FONT_12"

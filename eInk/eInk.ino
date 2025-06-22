@@ -1,7 +1,11 @@
 #include <SPI.h>
 #include "epd2in13_V4.h"
 
-#define TEST_IMAGE 1
+#define TEST_FAST_INIT 1
+#define TEST_FULL_INIT 0
+
+#define TEST_CLEAR 1
+#define TEST_IMAGE 0
 #define TEST_PAINT 0
 #define TEST_PART  0
 
@@ -37,9 +41,17 @@ Epd epd(RST_PIN, DC_PIN, CS_PIN, BUSY_PIN);
 void setup() {
   Serial.begin(115200);
 
-#if TEST_IMAGE
+#if TEST_FAST_INIT
   Serial.println("init fast");
   epd.Init(FAST);
+#endif
+
+#if TEST_FULL_INIT
+  Serial.println("init FULL");
+  epd.Init(FULL);
+#endif
+
+#if TEST_IMAGE
   Serial.println("Display_Fast");
   epd.Display_Fast(IMAGE_DATA);
   Serial.println("delay");
@@ -47,14 +59,15 @@ void setup() {
 #endif
 
 #if TEST_PAINT
-  Serial.println("epd FULL");
-  epd.Init(FULL);
   Paint paint(image, epd.bufwidth*8, epd.bufheight);    //width should be the multiple of 8
 
   paint.Clear(UNCOLORED);
   paint.DrawStringAt(8, 2, "e-Paper Demo", &Font12, COLORED);
   paint.DrawStringAt(8, 20, "Hello world", &Font12, COLORED);
-  epd.Display1(image);//1
+
+  delay(2000);
+  Serial.println("text");
+  epd.DisplayQuarter(image);//1
 
   paint.Clear(UNCOLORED);
   paint.DrawRectangle(2,2,50,50,COLORED);
@@ -63,22 +76,27 @@ void setup() {
   paint.DrawFilledRectangle(52,2,100,50,COLORED);
   paint.DrawLine(52,2,100,50,UNCOLORED);
   paint.DrawLine(100,2,52,50,UNCOLORED);
-  epd.Display1(image);//2
-  
+
+  delay(2000);
+  Serial.println("lines");
+  epd.DisplayQuarter(image);//2
+
   paint.Clear(UNCOLORED);
   paint.DrawCircle(25,25,20,COLORED);
   paint.DrawFilledCircle(75,25,20,COLORED);
-  epd.Display1(image);//3
   
+  delay(2000);
+  Serial.println("circles");
+  epd.DisplayQuarter(image);//3
+
   paint.Clear(UNCOLORED);
-  epd.Display1(image);//4
 
   delay(2000);
-
+  Serial.println("clear");
+  epd.DisplayQuarter(image);//4
 #endif
 
 #if TEST_PART
-
   Serial.println("epd PART");
   epd.DisplayPartBaseImage(IMAGE_DATA);
   char i = 0;
@@ -94,9 +112,12 @@ void setup() {
 
 #endif
 
-  // epd.Init(FULL);
-  // Serial.println("e-Paper clear");
-  // epd.Clear();
+#if TEST_CLEAR
+  epd.Init(FULL);
+  Serial.println("e-Paper clear");
+  epd.Clear();
+#endif
+
   Serial.println("e-Paper sleep");
   epd.Sleep();
 

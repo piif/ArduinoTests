@@ -103,11 +103,11 @@ void Epd::SetWindows(
         unsigned char Ystart,
         unsigned char Xend,
         unsigned char Yend) {
-    SendCommand(0x44); // SET_RAM_X_ADDRESS_START_END_POSITION
+    SendCommand(SET_RAM_X_ADDRESS_START_END_POSITION);
     SendData((Xstart>>3) & 0xFF);
     SendData((Xend>>3) & 0xFF);
 	
-    SendCommand(0x45); // SET_RAM_Y_ADDRESS_START_END_POSITION
+    SendCommand(SET_RAM_Y_ADDRESS_START_END_POSITION);
     SendData(Ystart & 0xFF);
     SendData((Ystart >> 8) & 0xFF);
     SendData(Yend & 0xFF);
@@ -121,10 +121,10 @@ parameter:
 	Ystart : Y-axis starting position
 ******************************************************************************/
 void Epd::SetCursor(unsigned char Xstart, unsigned char Ystart) {
-    SendCommand(0x4E); // SET_RAM_X_ADDRESS_COUNTER
+    SendCommand(SET_RAM_X_ADDRESS_COUNTER);
     SendData(Xstart & 0xFF);
 
-    SendCommand(0x4F); // SET_RAM_Y_ADDRESS_COUNTER
+    SendCommand(SET_RAM_Y_ADDRESS_COUNTER);
     SendData(Ystart & 0xFF);
     SendData((Ystart >> 8) & 0xFF);
 }
@@ -149,71 +149,71 @@ int Epd::Init(char Mode) {
     
     if(Mode == FULL) {
         WaitUntilIdle();
-        SendCommand(0x12); // soft reset
+        SendCommand(SOFT_RESET);
         WaitUntilIdle();
 
-        SendCommand(0x01); //Driver output control
+        SendCommand(DRIVER_OUTPUT_CONTROL);
         SendData(0xF9);
         SendData(0x00);
         SendData(0x00);
 
-        SendCommand(0x11); //data entry mode
+        SendCommand(DATA_ENTRY_MODE);
         SendData(0x03);
 
 		SetWindows(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
 		SetCursor(0, 0);
 		
-		SendCommand(0x3C); //BorderWavefrom
+		SendCommand(BORDER_WAVE_FORM);
 		SendData(0x05);	
 
-		SendCommand(0x21); //  Display update control
+		SendCommand(DISPLAY_UPDATE_CONTROL_1);
 		SendData(0x00);
 		SendData(0x80);	
 
-		SendCommand(0x18); //Read built-in temperature sensor
+		SendCommand(TEMPERATURE_SENSOR_SELECTION);
 		SendData(0x80);	
 		WaitUntilIdle();
     } else if(Mode == FAST) {
         WaitUntilIdle();
-        SendCommand(0x12); // soft reset
+        SendCommand(SOFT_RESET);
         WaitUntilIdle();
 
-        SendCommand(0x18); // Read built-in temperature sensor
+        SendCommand(TEMPERATURE_SENSOR_SELECTION);
 		SendData(0x80);	
 
-        SendCommand(0x11); // data entry mode
+        SendCommand(DATA_ENTRY_MODE);
         SendData(0x03);
 
 		SetWindows(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
 		SetCursor(0, 0);
 		
-		SendCommand(0x22); // Load temperature value
-		SendData(0xB1);	
-        SendCommand(0x20);
+		SendCommand(DISPLAY_UPDATE_CONTROL_2); // Load temperature value
+		SendData(ENABLE_CLOCK_SIGNAL | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISABLE_CLOCK_SIGNAL);	
+        SendCommand(MASTER_ACTIVATION);
         WaitUntilIdle();
 
-		SendCommand(0x1A); //  Write to temperature register
+		SendCommand(WRITE_TO_TEMPERATURE_REGISTER);
 		SendData(0x64);
 		SendData(0x00);	
 
-        SendCommand(0x22); //  Load temperature value
-		SendData(0x91);
-		SendCommand(0x20);	
+        SendCommand(DISPLAY_UPDATE_CONTROL_2); // stop load temperature value
+		SendData(ENABLE_CLOCK_SIGNAL | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISABLE_CLOCK_SIGNAL);
+		SendCommand(MASTER_ACTIVATION);	
 		WaitUntilIdle();
     } else if(Mode == PART) {	
-		digitalWrite(reset_pin, LOW);                //module reset
+		digitalWrite(reset_pin, LOW); // module reset
 		delay(1);
 		digitalWrite(reset_pin, HIGH);
 		
-		SendCommand(0x3C); //BorderWavefrom
+		SendCommand(BORDER_WAVE_FORM);
 		SendData(0x80);	
 
-        SendCommand(0x01); //Driver output control
+        SendCommand(DRIVER_OUTPUT_CONTROL);
 		SendData(0xF9);	
         SendData(0x00);	
         SendData(0x00);	
 	
-		SendCommand(0x11); // data entry mode
+		SendCommand(DATA_ENTRY_MODE);
         SendData(0x03); 
 		
 		SetWindows(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
@@ -240,29 +240,6 @@ void Epd::Reset(void) {
 }
 
 /******************************************************************************
-function :	Clear screen
-parameter:
-******************************************************************************/
-void Epd::Clear(void) {
-    int w, h;
-    w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
-    h = EPD_HEIGHT;
-
-    SendCommand(0x24);
-    for (int j = 0; j < h; j++) {
-        for (int i = 0; i < w; i++) {
-            SendData(0xff);
-        }
-    }
-
-    //DISPLAY REFRESH
-    SendCommand(0x22);
-    SendData(0xf7);
-    SendCommand(0x20);
-    WaitUntilIdle();
-}
-
-/******************************************************************************
 function :	Sends the image buffer in RAM to e-Paper and displays
 parameter:
 	frame_buffer : Image data
@@ -272,7 +249,7 @@ void Epd::Display(const unsigned char* frame_buffer) {
     int h = EPD_HEIGHT;
 
     if (frame_buffer != NULL) {
-        SendCommand(0x24);
+        SendCommand(WRITE_RAM_BLACK);
         for (int j = 0; j < h; j++) {
             for (int i = 0; i < w; i++) {
                 SendData(pgm_read_byte(&frame_buffer[i + j * w]));
@@ -281,15 +258,18 @@ void Epd::Display(const unsigned char* frame_buffer) {
     }
 
     //DISPLAY REFRESH
-    SendCommand(0x22);
-    SendData(0xf7);
-    SendCommand(0x20);
+    SendCommand(DISPLAY_UPDATE_CONTROL_2);
+    SendData(
+        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
+      | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
+      | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
+    SendCommand(MASTER_ACTIVATION);
     WaitUntilIdle();
 }
 
-void Epd::Display1(const unsigned char* frame_buffer) {
+void Epd::DisplayQuarter(const unsigned char* frame_buffer) {
     if(this->count == 0) {
-        SendCommand(0x24);
+        SendCommand(WRITE_RAM_BLACK);
         this->count++;
     } else if(this->count > 0 && this->count < 4 ) {
         this->count++;
@@ -298,9 +278,12 @@ void Epd::Display1(const unsigned char* frame_buffer) {
             SendData(frame_buffer[i]);
     }
     if(this->count == 4) {
-        SendCommand(0x22);
-        SendData(0xf7);
-        SendCommand(0x20);
+        SendCommand(DISPLAY_UPDATE_CONTROL_2);
+        SendData(
+            ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
+            | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
+            | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
+        SendCommand(MASTER_ACTIVATION);
         WaitUntilIdle();
         this->count = 0;
     }
@@ -316,7 +299,7 @@ void Epd::Display_Fast(const unsigned char* frame_buffer) {
     int h = EPD_HEIGHT;
 
     if (frame_buffer != NULL) {
-        SendCommand(0x24);
+        SendCommand(WRITE_RAM_BLACK);
         for (int j = 0; j < h; j++) {
             for (int i = 0; i < w; i++) {
                 SendData(pgm_read_byte(&frame_buffer[i + j * w]));
@@ -325,9 +308,13 @@ void Epd::Display_Fast(const unsigned char* frame_buffer) {
     }
 
     //DISPLAY REFRESH
-    SendCommand(0x22);
+    SendCommand(DISPLAY_UPDATE_CONTROL_2);
+    SendData(
+        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
+      | DISPLAY_WITH_DISPLAY_MODE_1
+      | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
     SendData(0xC7);
-    SendCommand(0x20);
+    SendCommand(MASTER_ACTIVATION);
     WaitUntilIdle();
 }
 
@@ -344,14 +331,14 @@ void Epd::DisplayPartBaseImage(const unsigned char* frame_buffer) {
     int h = EPD_HEIGHT;
 
     if (frame_buffer != NULL) {
-        SendCommand(0x24);
+        SendCommand(WRITE_RAM_BLACK);
         for (int j = 0; j < h; j++) {
             for (int i = 0; i < w; i++) {
                 SendData(pgm_read_byte(&frame_buffer[i + j * w]));
             }
         }
 
-        SendCommand(0x26);
+        SendCommand(WRITE_RAM_RED);
         for (int j = 0; j < h; j++) {
             for (int i = 0; i < w; i++) {
                 SendData(pgm_read_byte(&frame_buffer[i + j * w]));
@@ -360,9 +347,12 @@ void Epd::DisplayPartBaseImage(const unsigned char* frame_buffer) {
     }
 
     //DISPLAY REFRESH
-    SendCommand(0x22);
-    SendData(0xf7);
-    SendCommand(0x20);
+    SendCommand(DISPLAY_UPDATE_CONTROL_2);
+    SendData(
+        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
+        | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
+        | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
+    SendCommand(MASTER_ACTIVATION);
     WaitUntilIdle();
 }
 
@@ -376,7 +366,7 @@ void Epd::DisplayPart(const unsigned char* frame_buffer) {
     int h = EPD_HEIGHT;
 
     if (frame_buffer != NULL) {
-        SendCommand(0x24);
+        SendCommand(WRITE_RAM_BLACK);
         for (int j = 0; j < h; j++) {
             for (int i = 0; i < w; i++) {
                 SendData(pgm_read_byte(&frame_buffer[i + j * w]));
@@ -385,9 +375,12 @@ void Epd::DisplayPart(const unsigned char* frame_buffer) {
     }
 
     //DISPLAY REFRESH
-    SendCommand(0x22);
-    SendData(0xff);
-    SendCommand(0x20);
+    SendCommand(DISPLAY_UPDATE_CONTROL_2);
+    SendData(
+        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
+        | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_2 | DISPLAY_WITH_DISPLAY_MODE_1
+        | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
+    SendCommand(MASTER_ACTIVATION);
     WaitUntilIdle();
 }
 
@@ -395,22 +388,38 @@ void Epd::DisplayPart(const unsigned char* frame_buffer) {
 function :	Clear screen
 parameter:
 ******************************************************************************/
-void Epd::ClearPart(void) {
+void Epd::Clear(void) {
+    // SendCommand(DISPLAY_UPDATE_CONTROL_1);
+    // // SendData(UPDATE_RED_FORCE_0 | UPDATE_BLACK_FORCE_0);
+    // SendData(UPDATE_RED_FORCE_0 | UPDATE_BLACK_INVERT);
+    // SendData(0x80);
     int w, h;
     w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
     h = EPD_HEIGHT;
-    SendCommand(0x24);
+    SendCommand(WRITE_RAM_BLACK);
     for (int j = 0; j < h; j++) {
         for (int i = 0; i < w; i++) {
             SendData(0xff);
         }
     }
+    SendCommand(WRITE_RAM_RED);
+    for (int j = 0; j < h; j++) {
+        for (int i = 0; i < w; i++) {
+            SendData(0x00);
+        }
+    }
 
     //DISPLAY REFRESH
-    SendCommand(0x22);
-    SendData(0x0f);
-    SendCommand(0x20);
+    SendCommand(DISPLAY_UPDATE_CONTROL_2);
+    SendData(
+        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
+      | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
+      | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
+    SendCommand(MASTER_ACTIVATION);
     WaitUntilIdle();
+
+    // SendCommand(DISPLAY_UPDATE_CONTROL_1);
+    // SendData(UPDATE_RED_NORMAL | UPDATE_BLACK_NORMAL);
 }
 
 /******************************************************************************
@@ -418,7 +427,7 @@ function :	Enter sleep mode
 parameter:
 ******************************************************************************/
 void Epd::Sleep() {
-    SendCommand(0x10); //enter deep sleep
+    SendCommand(ENTER_DEEP_SLEEP); //enter deep sleep
     SendData(0x01);
     delay(200);
 
