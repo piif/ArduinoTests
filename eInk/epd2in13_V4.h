@@ -35,9 +35,10 @@
 #define EPD_WIDTH       122
 #define EPD_HEIGHT      250
 
-#define FULL			0
-#define FAST			1
-#define PART			2
+#define INIT_MODE_NONE    0
+#define INIT_MODE_FULL    1
+#define INIT_MODE_FAST    2
+#define INIT_MODE_PART    3
 
 // commands
 #define DRIVER_OUTPUT_CONTROL  0x01
@@ -78,24 +79,53 @@
 #define AUTO_WRITE_BLACK_RAM_FOR_REGULAR_PATTERN  0x47
 #define NOP  0x7F
 
-// DISPLAY_UPDATE_CONTROL_1 values
-#define UPDATE_BLACK_NORMAL  0x00
-#define UPDATE_BLACK_FORCE_0 0x04
-#define UPDATE_BLACK_INVERT  0x08
-#define UPDATE_RED_NORMAL    0x00
-#define UPDATE_RED_FORCE_0   0x40
-#define UPDATE_RED_INVERT    0x80
+// DISPLAY_UPDATE_CONTROL_1 bit mask
+#define CTRL1_UPDATE_BLACK_NORMAL  0x00
+#define CTRL1_UPDATE_BLACK_FORCE_0 0x04
+#define CTRL1_UPDATE_BLACK_INVERT  0x08
+#define CTRL1_UPDATE_RED_NORMAL    0x00
+#define CTRL1_UPDATE_RED_FORCE_0   0x40
+#define CTRL1_UPDATE_RED_INVERT    0x80
 
-// DISPLAY_UPDATE_CONTROL_2 values
-#define ENABLE_CLOCK_SIGNAL           0x80
-#define DISABLE_CLOCK_SIGNAL          0x01
-#define ENABLE_ANALOG                 0x40
-#define DISABLE_ANALOG                0x02
-#define LOAD_TEMPERATURE_VALUE        0x20
-#define LOAD_LUT_WITH_DISPLAY_MODE_1  0x10
-#define LOAD_LUT_WITH_DISPLAY_MODE_2  0x18
-#define DISPLAY_WITH_DISPLAY_MODE_1   0x04
-#define DISPLAY_WITH_DISPLAY_MODE_2   0x0C
+// DISPLAY_UPDATE_CONTROL_2 bit mask
+#define CTRL2_ENABLE_CLOCK_SIGNAL     0x80
+#define CTRL2_DISABLE_CLOCK_SIGNAL    0x01
+#define CTRL2_ENABLE_ANALOG           0x40
+#define CTRL2_DISABLE_ANALOG          0x02
+#define CTRL2_LOAD_TEMPERATURE_VALUE  0x20
+#define CTRL2_LOAD_LUT                0x10
+#define CTRL2_DISPLAY_MODE_2          0x08
+#define CTRL2_DISPLAY                 0x04
+
+// DATA_ENTRY_MODE bit mask , "common reading sense" is X_THEN_Y | LEFT_TO_RIGHT | TOP_TO_BOTTOM
+#define RIGHT_TO_LEFT 0x00
+#define LEFT_TO_RIGHT 0x01
+#define BOTTOM_TO_TOP 0x00
+#define TOP_TO_BOTTOM 0x02
+#define X_THEN_Y      0x00
+#define Y_THEN_X      0x04
+
+// REFRESH MODES
+#define REFRESH_NONE 0
+#define REFRESH_FAST ( \
+    CTRL2_ENABLE_CLOCK_SIGNAL | CTRL2_ENABLE_ANALOG \
+    | CTRL2_DISPLAY \
+    | CTRL2_DISABLE_ANALOG | CTRL2_DISABLE_CLOCK_SIGNAL \
+)
+#define REFRESH_FULL ( \
+    CTRL2_ENABLE_CLOCK_SIGNAL | CTRL2_ENABLE_ANALOG \
+    | CTRL2_LOAD_TEMPERATURE_VALUE | CTRL2_LOAD_LUT | CTRL2_DISPLAY \
+    | CTRL2_DISABLE_ANALOG | CTRL2_DISABLE_CLOCK_SIGNAL \
+)
+#define REFRESH_PART ( \
+    CTRL2_ENABLE_CLOCK_SIGNAL | CTRL2_ENABLE_ANALOG \
+    | CTRL2_LOAD_TEMPERATURE_VALUE | CTRL2_LOAD_LUT | CTRL2_DISPLAY \
+    | CTRL2_DISPLAY_MODE_2 \
+    | CTRL2_DISABLE_ANALOG | CTRL2_DISABLE_CLOCK_SIGNAL \
+)
+
+#define LAYER_BLACK WRITE_RAM_BLACK // 1 = white , 0 = black
+#define LAYER_RED   WRITE_RAM_RED   // 1 = red , 0 = under color
 
 class Epd {
 public:
@@ -117,22 +147,21 @@ public:
     void SendCommand(unsigned char command);
     void SendData(unsigned char data);
     void WaitUntilIdle(void);
-	void SetWindows(
-        unsigned char Xstart,
-        unsigned char Ystart,
-        unsigned char Xend,
-        unsigned char Yend
+
+	void SetWindow(
+        unsigned int Xstart,
+        unsigned int Ystart,
+        unsigned int Xend,
+        unsigned int Yend
     );
-	void SetCursor(unsigned char Xstart, unsigned char Ystart);
-	void Lut(unsigned char *lut);
+	void SetCursor(unsigned int Xstart, unsigned int Ystart);
     void Reset(void);
-    void Clear(void);
-    void Display(const unsigned char* frame_buffer);
-    void DisplayQuarter(const unsigned char* frame_buffer);
-    void Display_Fast(const unsigned char* frame_buffer);
-    void DisplayPartBaseImage(const unsigned char* frame_buffer);
-    void DisplayPart(const unsigned char* frame_buffer);
-    
+    void Display(const unsigned char* frame_buffer, const unsigned int len, const unsigned char layer = LAYER_BLACK, const unsigned char refresh_mode = REFRESH_FULL);
+    void DisplayPgm(const unsigned char* frame_buffer, const unsigned int len, const unsigned char layer = LAYER_BLACK, const unsigned char refresh_mode = REFRESH_FULL);
+    void DisplayQuarter(const unsigned char* frame_buffer, const unsigned char layer = LAYER_BLACK, const unsigned char refresh_mode = REFRESH_FULL);
+    void Clear(const unsigned char refresh_mode = REFRESH_FULL);
+    void Refresh(const unsigned char refresh_mode = REFRESH_FULL);
+
     void Sleep(void);
 
 private:

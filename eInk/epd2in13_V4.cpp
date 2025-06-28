@@ -50,8 +50,8 @@ Epd::Epd(
 
     width = EPD_WIDTH;
     height = EPD_HEIGHT;
-    bufwidth = 128/8;  //16
-    bufheight = 63;
+    bufwidth = (EPD_WIDTH + 7) >> 3; // ceil(EPD_WIDTH / 8)
+    bufheight = 63; // quarter buffer height = ceil(EPD_HEIGHT/4)
 }
 
 /******************************************************************************
@@ -93,25 +93,25 @@ void Epd::WaitUntilIdle(void) {
 /******************************************************************************
 function :	Setting the display window
 parameter:
-	Xstart : X-axis starting position
+	Xstart : X-axis starting position : must be multiple of 8
 	Ystart : Y-axis starting position
-	Xend : End position of X-axis
+	Xend : End position of X-axis : must be multiple of 8
 	Yend : End position of Y-axis
 ******************************************************************************/
-void Epd::SetWindows(
-        unsigned char Xstart,
-        unsigned char Ystart,
-        unsigned char Xend,
-        unsigned char Yend) {
+void Epd::SetWindow(
+        unsigned int Xstart,
+        unsigned int Ystart,
+        unsigned int Xend,
+        unsigned int Yend) {
     SendCommand(SET_RAM_X_ADDRESS_START_END_POSITION);
-    SendData((Xstart>>3) & 0xFF);
-    SendData((Xend>>3) & 0xFF);
+    SendData(Xstart >> 3);
+    SendData(Xend >> 3);
 	
     SendCommand(SET_RAM_Y_ADDRESS_START_END_POSITION);
-    SendData(Ystart & 0xFF);
-    SendData((Ystart >> 8) & 0xFF);
-    SendData(Yend & 0xFF);
-    SendData((Yend >> 8) & 0xFF);
+    SendData(Ystart);
+    SendData(Ystart >> 8);
+    SendData(Yend);
+    SendData(Yend >> 8);
 }
 
 /******************************************************************************
@@ -120,16 +120,14 @@ parameter:
 	Xstart : X-axis starting position
 	Ystart : Y-axis starting position
 ******************************************************************************/
-void Epd::SetCursor(unsigned char Xstart, unsigned char Ystart) {
+void Epd::SetCursor(unsigned int Xstart, unsigned int Ystart) {
     SendCommand(SET_RAM_X_ADDRESS_COUNTER);
-    SendData(Xstart & 0xFF);
+    SendData(Xstart >> 3);
 
     SendCommand(SET_RAM_Y_ADDRESS_COUNTER);
-    SendData(Ystart & 0xFF);
-    SendData((Ystart >> 8) & 0xFF);
+    SendData(Ystart);
+    SendData(Ystart >> 8);
 }
-
-
 
 /******************************************************************************
 function :	Initialize the e-Paper register
@@ -147,7 +145,7 @@ int Epd::Init(char Mode) {
     
     Reset();
     
-    if(Mode == FULL) {
+    if(Mode == INIT_MODE_FULL) {
         WaitUntilIdle();
         SendCommand(SOFT_RESET);
         WaitUntilIdle();
@@ -158,37 +156,37 @@ int Epd::Init(char Mode) {
         SendData(0x00);
 
         SendCommand(DATA_ENTRY_MODE);
-        SendData(0x03);
+        SendData(X_THEN_Y | LEFT_TO_RIGHT | TOP_TO_BOTTOM);
 
-		SetWindows(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
+		SetWindow(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
 		SetCursor(0, 0);
 		
 		SendCommand(BORDER_WAVE_FORM);
 		SendData(0x05);	
 
 		SendCommand(DISPLAY_UPDATE_CONTROL_1);
-		SendData(0x00);
-		SendData(0x80);	
+		SendData(CTRL1_UPDATE_BLACK_INVERT | CTRL1_UPDATE_RED_NORMAL);
+		SendData(0x80);	// Available Source from S8 to S167 instead of S0 to S175 ??
 
 		SendCommand(TEMPERATURE_SENSOR_SELECTION);
 		SendData(0x80);	
 		WaitUntilIdle();
-    } else if(Mode == FAST) {
+    } else if(Mode == INIT_MODE_FAST) {
         WaitUntilIdle();
         SendCommand(SOFT_RESET);
         WaitUntilIdle();
 
         SendCommand(TEMPERATURE_SENSOR_SELECTION);
-		SendData(0x80);	
+		SendData(0x80);	// internal censor
 
         SendCommand(DATA_ENTRY_MODE);
-        SendData(0x03);
+        SendData(X_THEN_Y | LEFT_TO_RIGHT | TOP_TO_BOTTOM);
 
-		SetWindows(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
+		SetWindow(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
 		SetCursor(0, 0);
 		
 		SendCommand(DISPLAY_UPDATE_CONTROL_2); // Load temperature value
-		SendData(ENABLE_CLOCK_SIGNAL | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISABLE_CLOCK_SIGNAL);	
+		SendData(CTRL2_ENABLE_CLOCK_SIGNAL | CTRL2_LOAD_TEMPERATURE_VALUE | CTRL2_LOAD_LUT | CTRL2_DISABLE_CLOCK_SIGNAL);	
         SendCommand(MASTER_ACTIVATION);
         WaitUntilIdle();
 
@@ -197,14 +195,14 @@ int Epd::Init(char Mode) {
 		SendData(0x00);	
 
         SendCommand(DISPLAY_UPDATE_CONTROL_2); // stop load temperature value
-		SendData(ENABLE_CLOCK_SIGNAL | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISABLE_CLOCK_SIGNAL);
+		SendData(CTRL2_ENABLE_CLOCK_SIGNAL | CTRL2_LOAD_LUT | CTRL2_DISABLE_CLOCK_SIGNAL);
 		SendCommand(MASTER_ACTIVATION);	
 		WaitUntilIdle();
-    } else if(Mode == PART) {	
+    } else if(Mode == INIT_MODE_PART) {	
 		digitalWrite(reset_pin, LOW); // module reset
 		delay(1);
 		digitalWrite(reset_pin, HIGH);
-		
+
 		SendCommand(BORDER_WAVE_FORM);
 		SendData(0x80);	
 
@@ -214,9 +212,9 @@ int Epd::Init(char Mode) {
         SendData(0x00);	
 	
 		SendCommand(DATA_ENTRY_MODE);
-        SendData(0x03); 
+        SendData(X_THEN_Y | LEFT_TO_RIGHT | TOP_TO_BOTTOM); 
 		
-		SetWindows(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
+		SetWindow(0, 0, EPD_WIDTH-1, EPD_HEIGHT-1);
 		SetCursor(0, 0);
     } else {
         return -1;
@@ -243,183 +241,74 @@ void Epd::Reset(void) {
 function :	Sends the image buffer in RAM to e-Paper and displays
 parameter:
 	frame_buffer : Image data
+    refresh_mode
 ******************************************************************************/
-void Epd::Display(const unsigned char* frame_buffer) {
-    int w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
-    int h = EPD_HEIGHT;
-
-    if (frame_buffer != NULL) {
-        SendCommand(WRITE_RAM_BLACK);
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                SendData(pgm_read_byte(&frame_buffer[i + j * w]));
-            }
-        }
+void Epd::Display(const unsigned char* frame_buffer, const unsigned int len, const unsigned char layer, const unsigned char refresh_mode) {
+    SendCommand(layer);
+    int l = len;
+    while (l--) {
+        SendData(*frame_buffer++);
     }
 
-    //DISPLAY REFRESH
-    SendCommand(DISPLAY_UPDATE_CONTROL_2);
-    SendData(
-        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
-      | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
-      | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
-    SendCommand(MASTER_ACTIVATION);
-    WaitUntilIdle();
+    Refresh(refresh_mode);
+}
+void Epd::DisplayPgm(const unsigned char* frame_buffer, const unsigned int len, const unsigned char layer, const unsigned char refresh_mode) {
+    SendCommand(layer);
+    int l = len;
+    while (l--) {
+        SendData(pgm_read_byte(frame_buffer++));
+    }
+
+    Refresh(refresh_mode);
 }
 
-void Epd::DisplayQuarter(const unsigned char* frame_buffer) {
+void Epd::DisplayQuarter(const unsigned char* frame_buffer, const unsigned char layer, const unsigned char refresh_mode) {
     if(this->count == 0) {
-        SendCommand(WRITE_RAM_BLACK);
+        SendCommand(layer);
         this->count++;
     } else if(this->count > 0 && this->count < 4 ) {
         this->count++;
     }
     for(int i = 0; i < this->bufwidth * this->bufheight; i++) {
-            SendData(frame_buffer[i]);
+        SendData(frame_buffer[i]);
     }
     if(this->count == 4) {
-        SendCommand(DISPLAY_UPDATE_CONTROL_2);
-        SendData(
-            ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
-            | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
-            | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
-        SendCommand(MASTER_ACTIVATION);
-        WaitUntilIdle();
+        Refresh(refresh_mode);
         this->count = 0;
     }
 }
 
 /******************************************************************************
-function :	Sends the image buffer in RAM to e-Paper and fast displays
-parameter:
-	frame_buffer : Image data
-******************************************************************************/
-void Epd::Display_Fast(const unsigned char* frame_buffer) {
-    int w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
-    int h = EPD_HEIGHT;
-
-    if (frame_buffer != NULL) {
-        SendCommand(WRITE_RAM_BLACK);
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                SendData(pgm_read_byte(&frame_buffer[i + j * w]));
-            }
-        }
-    }
-
-    //DISPLAY REFRESH
-    SendCommand(DISPLAY_UPDATE_CONTROL_2);
-    SendData(
-        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
-      | DISPLAY_WITH_DISPLAY_MODE_1
-      | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
-    SendData(0xC7);
-    SendCommand(MASTER_ACTIVATION);
-    WaitUntilIdle();
-}
-
-
-
-
-/******************************************************************************
-function :	Refresh a base image
-parameter:
-	frame_buffer : Image data	
-******************************************************************************/
-void Epd::DisplayPartBaseImage(const unsigned char* frame_buffer) {
-    int w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
-    int h = EPD_HEIGHT;
-
-    if (frame_buffer != NULL) {
-        SendCommand(WRITE_RAM_BLACK);
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                SendData(pgm_read_byte(&frame_buffer[i + j * w]));
-            }
-        }
-
-        SendCommand(WRITE_RAM_RED);
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                SendData(pgm_read_byte(&frame_buffer[i + j * w]));
-            }
-        }
-    }
-
-    //DISPLAY REFRESH
-    SendCommand(DISPLAY_UPDATE_CONTROL_2);
-    SendData(
-        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
-        | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
-        | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
-    SendCommand(MASTER_ACTIVATION);
-    WaitUntilIdle();
-}
-
-/******************************************************************************
-function :	Sends the image buffer in RAM to e-Paper and partial refresh
-parameter:
-	frame_buffer : Image data
-******************************************************************************/
-void Epd::DisplayPart(const unsigned char* frame_buffer) {
-    int w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
-    int h = EPD_HEIGHT;
-
-    if (frame_buffer != NULL) {
-        SendCommand(WRITE_RAM_BLACK);
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                SendData(pgm_read_byte(&frame_buffer[i + j * w]));
-            }
-        }
-    }
-
-    //DISPLAY REFRESH
-    SendCommand(DISPLAY_UPDATE_CONTROL_2);
-    SendData(
-        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
-        | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_2 | DISPLAY_WITH_DISPLAY_MODE_1
-        | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
-    SendCommand(MASTER_ACTIVATION);
-    WaitUntilIdle();
-}
-
-/******************************************************************************
 function :	Clear screen
 parameter:
+   refresh_mode: REFRESH_NONE (to prepare buffer only) , REFRESH_FAST or REFRESH_FULL
 ******************************************************************************/
-void Epd::Clear(void) {
-    // SendCommand(DISPLAY_UPDATE_CONTROL_1);
-    // // SendData(UPDATE_RED_FORCE_0 | UPDATE_BLACK_FORCE_0);
-    // SendData(UPDATE_RED_FORCE_0 | UPDATE_BLACK_INVERT);
-    // SendData(0x80);
-    int w, h;
-    w = (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1);
-    h = EPD_HEIGHT;
+void Epd::Clear(const unsigned char refresh_mode) {
+    int len = ( (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1) ) * EPD_HEIGHT;
     SendCommand(WRITE_RAM_BLACK);
-    for (int j = 0; j < h; j++) {
-        for (int i = 0; i < w; i++) {
-            SendData(0xff);
-        }
+    for (int i = 0; i < len; i++) {
+        SendData(0x00);
     }
     SendCommand(WRITE_RAM_RED);
-    for (int j = 0; j < h; j++) {
-        for (int i = 0; i < w; i++) {
-            SendData(0x00);
-        }
+    for (int i = 0; i < len; i++) {
+        SendData(0x00);
     }
 
-    //DISPLAY REFRESH
-    SendCommand(DISPLAY_UPDATE_CONTROL_2);
-    SendData(
-        ENABLE_CLOCK_SIGNAL | ENABLE_ANALOG
-      | LOAD_TEMPERATURE_VALUE | LOAD_LUT_WITH_DISPLAY_MODE_1 | DISPLAY_WITH_DISPLAY_MODE_1
-      | DISABLE_ANALOG | DISABLE_CLOCK_SIGNAL);
-    SendCommand(MASTER_ACTIVATION);
-    WaitUntilIdle();
+    Refresh(refresh_mode);
+}
 
-    // SendCommand(DISPLAY_UPDATE_CONTROL_1);
-    // SendData(UPDATE_RED_NORMAL | UPDATE_BLACK_NORMAL);
+/******************************************************************************
+function :	Sends refresh sequence
+parameter:
+	mode : fast / full refresh
+******************************************************************************/
+void Epd::Refresh(const unsigned char refresh_mode) {
+    if (refresh_mode) {
+        SendCommand(DISPLAY_UPDATE_CONTROL_2);
+        SendData(refresh_mode);
+        SendCommand(MASTER_ACTIVATION);
+        WaitUntilIdle();
+    }
 }
 
 /******************************************************************************

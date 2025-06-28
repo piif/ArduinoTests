@@ -27,13 +27,19 @@
 #include <avr/pgmspace.h>
 #include "epdpaint.h"
 
+#if defined (INCLUDE_FONT_24) || defined (INCLUDE_FONT_20) || defined (INCLUDE_FONT_16) || defined (INCLUDE_FONT_12) || defined (INCLUDE_FONT_8)
+#include <stdint.h>
+#endif
+
 Paint::Paint(unsigned char* image, int width, int height) {
     this->rotate = ROTATE_0;
     this->image = image;
-    /* 1 byte = 8 pixels, so the width should be the multiple of 8 */
+    /* 1 byte = 8 pixels, so the width should be the upper multiple of 8 */
     this->width = width % 8 ? width + 8 - (width % 8) : width;
     this->height = height;
+    this->buffer_size = width/8 * height;
 }
+
 
 Paint::~Paint() {
 }
@@ -42,10 +48,10 @@ Paint::~Paint() {
  *  @brief: clear the image
  */
 void Paint::Clear(int colored) {
-    for (int x = 0; x < this->width; x++) {
-        for (int y = 0; y < this->height; y++) {
-            DrawAbsolutePixel(x, y, colored);
-        }
+    int len = this->buffer_size;
+    unsigned char pattern = (IF_INVERT_COLOR == colored) ? 0xFF : 0x00;
+    for (int i = 0; i < len; i++) {
+        image[i] = pattern;
     }
 }
 
@@ -57,18 +63,12 @@ void Paint::DrawAbsolutePixel(int x, int y, int colored) {
     if (x < 0 || x >= this->width || y < 0 || y >= this->height) {
         return;
     }
-    if (IF_INVERT_COLOR) {
-        if (colored) {
-            image[(x + y * this->width) / 8] |= 0x80 >> (x % 8);
-        } else {
-            image[(x + y * this->width) / 8] &= ~(0x80 >> (x % 8));
-        }
+    // 1 & 1 or 0 & 0 => must set bit
+    // 1 & 0 or 0 & 1 => must clear bit
+    if (IF_INVERT_COLOR == colored) {
+        image[(x + y * this->width) / 8] |= 0x80 >> (x % 8);
     } else {
-        if (colored) {
-            image[(x + y * this->width) / 8] &= ~(0x80 >> (x % 8));
-        } else {
-            image[(x + y * this->width) / 8] |= 0x80 >> (x % 8);
-        }
+        image[(x + y * this->width) / 8] &= ~(0x80 >> (x % 8));
     }
 }
 
@@ -77,6 +77,10 @@ void Paint::DrawAbsolutePixel(int x, int y, int colored) {
  */
 unsigned char* Paint::GetImage(void) {
     return this->image;
+}
+
+int Paint::GetBufferSize(void) {
+    return this->buffer_size;
 }
 
 int Paint::GetWidth(void) {
@@ -139,17 +143,28 @@ void Paint::DrawPixel(int x, int y, int colored) {
     }
 }
 
+void Paint::Draw8Pixels(int x, int y, unsigned char pattern) {
+    if (x < 0 || x >= this->width || y < 0 || y >= this->height) {
+        return;
+    }
+    if (IF_INVERT_COLOR) {
+        image[(x + y * this->width) / 8] = pattern;
+    } else {
+        image[(x + y * this->width) / 8] = ~pattern;
+    }
+
+}
+
 #if defined (INCLUDE_FONT_24) || defined (INCLUDE_FONT_20) || defined (INCLUDE_FONT_16) || defined (INCLUDE_FONT_12) || defined (INCLUDE_FONT_8)
 /**
  *  @brief: this draws a charactor on the frame buffer but not refresh
  */
 void Paint::DrawCharAt(int x, int y, char ascii_char, sFONT* font, int colored) {
-    int i, j;
-    unsigned int char_offset = (ascii_char - ' ') * font->Height * (font->Width / 8 + (font->Width % 8 ? 1 : 0));
-    const unsigned char* ptr = &font->table[char_offset];
+    uint16_t char_offset = (ascii_char - ' ') * font->Height * (font->Width / 8 + (font->Width % 8 ? 1 : 0));
+    const uint8_t* ptr = &font->table[char_offset];
 
-    for (j = 0; j < font->Height; j++) {
-        for (i = 0; i < font->Width; i++) {
+    for (uint16_t j = 0; j < font->Height; j++) {
+        for (uint16_t i = 0; i < font->Width; i++) {
             if (pgm_read_byte(ptr) & (0x80 >> (i % 8))) {
                 DrawPixel(x + i, y + j, colored);
             }

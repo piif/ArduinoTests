@@ -34,7 +34,7 @@
 #define ROTATE_270          3
 
 // Color inverse. 1 or 0 = set or reset a bit if set a colored pixel
-#define IF_INVERT_COLOR     1
+#define IF_INVERT_COLOR  1
 
 #if defined (INCLUDE_FONT_24) || defined (INCLUDE_FONT_20) || defined (INCLUDE_FONT_16) || defined (INCLUDE_FONT_12) || defined (INCLUDE_FONT_8)
 #include "fonts.h"
@@ -52,7 +52,9 @@ public:
     int  GetRotate(void);
     void SetRotate(int rotate);
     unsigned char* GetImage(void);
+    int GetBufferSize(void);
     void DrawAbsolutePixel(int x, int y, int colored);
+    void Draw8Pixels(int x, int y, unsigned char pattern);
     void DrawPixel(int x, int y, int colored);
 #if defined (INCLUDE_FONT_24) || defined (INCLUDE_FONT_20) || defined (INCLUDE_FONT_16) || defined (INCLUDE_FONT_12) || defined (INCLUDE_FONT_8)
     void DrawCharAt(int x, int y, char ascii_char, sFONT* font, int colored);
@@ -70,6 +72,7 @@ private:
     unsigned char* image;
     int width;
     int height;
+    int buffer_size;
     int rotate;
 };
 

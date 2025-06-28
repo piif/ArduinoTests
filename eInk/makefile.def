@@ -1,5 +1,5 @@
 #MAIN_SOURCE:=epd2in13_V4.ino
-#LIBRARY_PATH=lib
+LIBRARY_PATH=~/GitHub/piif/ArduinoLibs ~/GitHub/piif/ArduinoTools
 
 # FOR LGT8F328
 PORT := /dev/ttyUSB0
