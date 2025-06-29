@@ -234,7 +234,7 @@ void Epd::Reset(void) {
     delay(2);
     digitalWrite(reset_pin, HIGH);
     delay(20);
-    this->count = 0; 
+    this->quarter = 0; 
 }
 
 /******************************************************************************
@@ -263,18 +263,17 @@ void Epd::DisplayPgm(const unsigned char* frame_buffer, const unsigned int len, 
 }
 
 void Epd::DisplayQuarter(const unsigned char* frame_buffer, const unsigned char layer, const unsigned char refresh_mode) {
-    if(this->count == 0) {
+    if(this->quarter == 0) {
         SendCommand(layer);
-        this->count++;
-    } else if(this->count > 0 && this->count < 4 ) {
-        this->count++;
     }
     for(int i = 0; i < this->bufwidth * this->bufheight; i++) {
         SendData(frame_buffer[i]);
     }
-    if(this->count == 4) {
+    if(this->quarter == 3) {
         Refresh(refresh_mode);
-        this->count = 0;
+        this->quarter = 0;
+    } else {
+        this->quarter++;
     }
 }
 

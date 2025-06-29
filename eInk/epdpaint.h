@@ -49,6 +49,7 @@ public:
     void SetWidth(int width);
     int  GetHeight(void);
     void SetHeight(int height);
+    void SetSize(int width, int height);
     int  GetRotate(void);
     void SetRotate(int rotate);
     unsigned char* GetImage(void);
@@ -67,12 +68,13 @@ public:
     void DrawFilledRectangle(int x0, int y0, int x1, int y1, int colored);
     void DrawCircle(int x, int y, int radius, int colored);
     void DrawFilledCircle(int x, int y, int radius, int colored);
+    void DumpImage(void);
 
 private:
     unsigned char* image;
     int width;
     int height;
-    int buffer_size;
+    int buffer_size, buffer_width;
     int rotate;
 };
 

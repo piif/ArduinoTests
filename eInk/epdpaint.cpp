@@ -24,6 +24,7 @@
  * THE SOFTWARE.
  */
 
+#include <Arduino.h>
 #include <avr/pgmspace.h>
 #include "epdpaint.h"
 
@@ -37,9 +38,12 @@ Paint::Paint(unsigned char* image, int width, int height) {
     /* 1 byte = 8 pixels, so the width should be the upper multiple of 8 */
     this->width = width % 8 ? width + 8 - (width % 8) : width;
     this->height = height;
-    this->buffer_size = width/8 * height;
+    this->buffer_width = width >> 3;
+    this->buffer_size = buffer_width * height;
+    // Serial.print(F("image "));Serial.print(this->width);Serial.print(F(" x "));Serial.println(this->height);
+    // Serial.print(F("buffer "));Serial.print(this->buffer_width);Serial.print(F(" / "));Serial.println(this->buffer_size);
+    // delay(10);
 }
-
 
 Paint::~Paint() {
 }
@@ -60,15 +64,15 @@ void Paint::Clear(int colored) {
  *          this function won't be affected by the rotate parameter.
  */
 void Paint::DrawAbsolutePixel(int x, int y, int colored) {
-    if (x < 0 || x >= this->width || y < 0 || y >= this->height) {
+    if (x < 0 || x >= width || y < 0 || y >= height) {
         return;
     }
     // 1 & 1 or 0 & 0 => must set bit
     // 1 & 0 or 0 & 1 => must clear bit
     if (IF_INVERT_COLOR == colored) {
-        image[(x + y * this->width) / 8] |= 0x80 >> (x % 8);
+        image[(x + y * width) / 8] |= 0x80 >> (x % 8);
     } else {
-        image[(x + y * this->width) / 8] &= ~(0x80 >> (x % 8));
+        image[(x + y * width) / 8] &= ~(0x80 >> (x % 8));
     }
 }
 
@@ -76,31 +80,41 @@ void Paint::DrawAbsolutePixel(int x, int y, int colored) {
  *  @brief: Getters and Setters
  */
 unsigned char* Paint::GetImage(void) {
-    return this->image;
+    return image;
 }
 
 int Paint::GetBufferSize(void) {
-    return this->buffer_size;
+    return buffer_size;
 }
 
 int Paint::GetWidth(void) {
-    return this->width;
+    return width;
 }
 
 void Paint::SetWidth(int width) {
     this->width = width % 8 ? width + 8 - (width % 8) : width;
+    buffer_width= this->width >> 3;
+    buffer_size = buffer_width * height;
 }
 
 int Paint::GetHeight(void) {
-    return this->height;
+    return height;
 }
 
 void Paint::SetHeight(int height) {
     this->height = height;
+    buffer_size = buffer_width * height;
+}
+
+void Paint::SetSize(int width, int height) {
+    this->width = width % 8 ? width + 8 - (width % 8) : width;
+    this->height= height;
+    buffer_width= this->width >> 3;
+    buffer_size = buffer_width * height;
 }
 
 int Paint::GetRotate(void) {
-    return this->rotate;
+    return rotate;
 }
 
 void Paint::SetRotate(int rotate){
@@ -112,45 +126,45 @@ void Paint::SetRotate(int rotate){
  */
 void Paint::DrawPixel(int x, int y, int colored) {
     int point_temp;
-    if (this->rotate == ROTATE_0) {
-        if(x < 0 || x >= this->width || y < 0 || y >= this->height) {
+    if (rotate == ROTATE_0) {
+        if(x < 0 || x >= width || y < 0 || y >= height) {
             return;
         }
         DrawAbsolutePixel(x, y, colored);
-    } else if (this->rotate == ROTATE_90) {
-        if(x < 0 || x >= this->height || y < 0 || y >= this->width) {
+    } else if (rotate == ROTATE_90) {
+        if(x < 0 || x >= height || y < 0 || y >= width) {
           return;
         }
         point_temp = x;
-        x = this->width - y;
+        x = width - y;
         y = point_temp;
         DrawAbsolutePixel(x, y, colored);
-    } else if (this->rotate == ROTATE_180) {
-        if(x < 0 || x >= this->width || y < 0 || y >= this->height) {
+    } else if (rotate == ROTATE_180) {
+        if(x < 0 || x >= width || y < 0 || y >= height) {
           return;
         }
-        x = this->width - x;
-        y = this->height - y;
+        x = width - x;
+        y = height - y;
         DrawAbsolutePixel(x, y, colored);
-    } else if (this->rotate == ROTATE_270) {
-        if(x < 0 || x >= this->height || y < 0 || y >= this->width) {
+    } else if (rotate == ROTATE_270) {
+        if(x < 0 || x >= height || y < 0 || y >= width) {
           return;
         }
         point_temp = x;
         x = y;
-        y = this->height - point_temp;
+        y = height - point_temp;
         DrawAbsolutePixel(x, y, colored);
     }
 }
 
 void Paint::Draw8Pixels(int x, int y, unsigned char pattern) {
-    if (x < 0 || x >= this->width || y < 0 || y >= this->height) {
+    if (x < 0 || x >= width || y < 0 || y >= height) {
         return;
     }
     if (IF_INVERT_COLOR) {
-        image[(x + y * this->width) / 8] = pattern;
+        image[(x + y * width) / 8] = pattern;
     } else {
-        image[(x + y * this->width) / 8] = ~pattern;
+        image[(x + y * width) / 8] = ~pattern;
     }
 
 }
@@ -222,6 +236,7 @@ void Paint::DrawLine(int x0, int y0, int x1, int y1, int colored) {
             y0 += sy;
         }
     }
+    DrawPixel(x1, y1 , colored);
 }
 
 /**
@@ -332,6 +347,25 @@ void Paint::DrawFilledCircle(int x, int y, int radius, int colored) {
             err += ++x_pos * 2 + 1;
         }
     } while(x_pos <= 0);
+}
+
+
+void Paint::DumpImage() {
+  unsigned char *im = image;
+  char pattern[9] = { 0, };
+  Serial.print(buffer_width); Serial.print('x'); Serial.println(height);
+  for (unsigned int y = 0; y < height; y++) {
+    Serial.print('|');
+    for (unsigned int x = 0; x < buffer_width; x++) {
+      unsigned char i = 0;
+      for (unsigned char m = 0x80; m; m >>= 1) {
+        pattern[i++] = (*im & m) ? 'X' : ' ';
+      }
+      im++;
+      Serial.print(pattern);
+    }
+    Serial.println('|');
+  }
 }
 
 /* END OF FILE */

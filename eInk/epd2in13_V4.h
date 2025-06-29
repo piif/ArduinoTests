@@ -133,7 +133,7 @@ public:
     unsigned long height;
     int bufwidth;
     int bufheight;
-    int count;
+    int quarter;
 
     Epd(
         unsigned int reset_pin,
