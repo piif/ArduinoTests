@@ -40,9 +40,6 @@ Paint::Paint(unsigned char* image, int width, int height) {
     this->height = height;
     this->buffer_width = width >> 3;
     this->buffer_size = buffer_width * height;
-    // Serial.print(F("image "));Serial.print(this->width);Serial.print(F(" x "));Serial.println(this->height);
-    // Serial.print(F("buffer "));Serial.print(this->buffer_width);Serial.print(F(" / "));Serial.println(this->buffer_size);
-    // delay(10);
 }
 
 Paint::~Paint() {

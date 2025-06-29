@@ -42,7 +42,8 @@ Epd::Epd(
         unsigned int reset_pin,
         unsigned int dc_pin,
         unsigned int cs_pin,
-        unsigned int busy_pin) {
+        unsigned int busy_pin):
+        spi_settings(2000000, MSBFIRST, SPI_MODE0) {
     this->reset_pin = reset_pin;
     this->dc_pin = dc_pin;
     this->cs_pin = cs_pin;
@@ -60,8 +61,13 @@ parameter:
      command : Command register
 ******************************************************************************/
 void Epd::SendCommand(unsigned char command) {
+    SPI.beginTransaction(spi_settings);
     digitalWrite(dc_pin, LOW);
-    SpiTransfer(command);
+    digitalWrite(cs_pin, LOW);
+    SPI.transfer(command);
+    digitalWrite(cs_pin, HIGH);
+    digitalWrite(dc_pin, HIGH);
+    SPI.endTransaction();
 }
 
 /******************************************************************************
@@ -70,14 +76,21 @@ parameter:
     Data : Write data
 ******************************************************************************/
 void Epd::SendData(unsigned char data) {
-    digitalWrite(dc_pin, HIGH);
-    SpiTransfer(data);
-}
-
-void Epd::SpiTransfer(unsigned char data) {
+    SPI.beginTransaction(spi_settings);
     digitalWrite(cs_pin, LOW);
     SPI.transfer(data);
     digitalWrite(cs_pin, HIGH);
+    SPI.endTransaction();
+}
+
+void Epd::SendData(unsigned char *data, unsigned int len) {
+    SPI.beginTransaction(spi_settings);
+    digitalWrite(cs_pin, LOW);
+    for (unsigned int i = 0; i < len; i++) {
+        SPI.transfer(data[i]);
+    }
+    digitalWrite(cs_pin, HIGH);
+    SPI.endTransaction();
 }
 
 /******************************************************************************
@@ -141,7 +154,6 @@ int Epd::Init(char Mode) {
     pinMode(busy_pin, INPUT); 
     
     SPI.begin();
-    SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
     
     Reset();
     
@@ -283,7 +295,7 @@ parameter:
    refresh_mode: REFRESH_NONE (to prepare buffer only) , REFRESH_FAST or REFRESH_FULL
 ******************************************************************************/
 void Epd::Clear(const unsigned char refresh_mode) {
-    int len = ( (EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1) ) * EPD_HEIGHT;
+    int len = bufwidth * EPD_HEIGHT;
     SendCommand(WRITE_RAM_BLACK);
     for (int i = 0; i < len; i++) {
         SendData(0x00);

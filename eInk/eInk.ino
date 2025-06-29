@@ -57,6 +57,7 @@ int test_clear() {
 int test_image() {
   Serial.println(F("image"));
   displayImage4b(&epd, &T2_image, 16, 10);
+  epd.Refresh();
   Serial.println(F("end image"));
   return 0;
 }

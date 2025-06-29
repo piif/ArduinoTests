@@ -31,6 +31,8 @@
 #ifndef epd2in13_V4
 #define epd2in13_V4
 
+#include <SPI.h>
+
 // Display resolution
 #define EPD_WIDTH       122
 #define EPD_HEIGHT      250
@@ -146,6 +148,7 @@ public:
     int  Init(char Mode);
     void SendCommand(unsigned char command);
     void SendData(unsigned char data);
+    void SendData(unsigned char *data, unsigned int len);
     void WaitUntilIdle(void);
 
 	void SetWindow(
@@ -170,7 +173,7 @@ private:
     unsigned int cs_pin;
     unsigned int busy_pin;
 
-    void SpiTransfer(unsigned char data);
+    SPISettings spi_settings;
 };
 
 #endif /* EPD2IN13_V4_H */
