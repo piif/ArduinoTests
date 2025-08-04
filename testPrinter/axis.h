@@ -1,62 +1,44 @@
 #include <Arduino.h>
 
-#define ERR_LEN 64
+#define M_X_EN 11 // white
+#define M_X_A   9 // blue
+#define M_X_B  10 // gray
+#define M_X_SPEED 60
+#define X_MAX 5974
 
-class Axis {
-    public:
-        // motor :
-        byte motorPinEnable; // Must be able to output PWM
-        byte motorPinA, motorPinB;
+#define M_Y_EN  3 // orange
+#define M_Y_A   6 // green
+#define M_Y_B   5 // yellow
+#define M_Y_SPEED 60
+#define Y_MAX 100000
+#define Y_MARGIN 8000 // distance between paper entry and pen
 
-        // position sensor :
-        byte forkPinA, forkPinB;
-        // end of track sensor :
-        byte sensorPin, sensorMode;
-        // output pin to echo end of track sensor (-1 if none)
-        short echoPin = -1;
+#define SENSOR_BITS (PINC & 0x3F)
 
-        int lowSpeed, highSpeed;
+#define FORK_X_A A0
+#define FORK_X_B A1
+#define FORK_X_BITS 0x03
 
-        Axis(
-            byte motorPinEnable, byte motorPinA, byte motorPinB,
-            byte forkPinA, byte forkPinB,
-            byte sensorPin, byte sensorMode = INPUT_PULLUP, short echoPin = -1);
+#define FORK_Y_A A2
+#define FORK_Y_B A3
+#define FORK_Y_BITS 0x0C
 
-        int speed = 0;
-        long positionMax, positionMin;
+#define FORK_P A4 // green , 1 means paper is present , 0 = no paper
+#define FORK_P_BITS 0x10
+#define FORK_H A5 // 1 means head is at left end
+#define FORK_H_BITS 0x20
 
-        volatile byte forkState;
-        volatile byte sensorState;
-        volatile long position;
+#define PAPER_LED 13
 
-        volatile byte err[ERR_LEN];
-        volatile byte errIdx = 0;
+extern volatile byte paper_present;
+extern volatile byte head_max;
 
-        void begin();
-        void setSpeed(int v);
-        void stop() {
-            // if (speed == highSpeed) {
-            //     setSpeed(-highSpeed);
-            //     delay(10);
-            // } else if (speed == -highSpeed) {
-            //     setSpeed(highSpeed);
-            //     delay(10);
-            // } else if (speed == lowSpeed) {
-            //     setSpeed(-lowSpeed);
-            //     delay(5);
-            // } else if (speed == -lowSpeed) {
-            //     setSpeed(lowSpeed);
-            //     delay(5);
-            // }
-            setSpeed(0);
-        }
-        void setHighSpeed(short dir) {
-            setSpeed(dir == -1 ? -highSpeed : highSpeed);
-        }
-        void setLowSpeed(short dir) {
-            setSpeed(dir == -1 ? -lowSpeed : lowSpeed);
-        }
-        void moveOf(int delta);
-        void updateState();
-        void status();
-};
+void axis_begin();
+
+void axis_x_set_speed(int v);
+void axis_y_set_speed(int v);
+void axis_stop();
+
+void axis_x_move_of(int delta);
+void axis_y_move_of(int delta);
+void axis_status();
