@@ -56,7 +56,7 @@ void axis_begin() {
     pinMode(FORK_Y_A, INPUT);
     pinMode(FORK_Y_B, INPUT);
 
-    pinMode(FORK_P, INPUT);
+    pinMode(FORK_P, INPUT_PULLUP);
     pinMode(FORK_H, INPUT_PULLUP);
 
     // initialize sensors status
@@ -153,35 +153,40 @@ void axis_y_move_of(int delta) {
 }
 
 ISR(PCINT1_vect) {
-    byte changes = SENSOR_BITS ^ sensor_bits;
+    cli();
+    byte new_sensor_bits = SENSOR_BITS;
+    byte changes = new_sensor_bits ^ sensor_bits;
+    sensor_bits = new_sensor_bits;
 
     if (changes & FORK_X_BITS) {
         // update x position on any sensor change
         axis_x_update();
     }
-    if ((changes & FORK_Y_BITS) && (PINC & FORK_Y_BITS) == 0) {
+    if ((changes & FORK_Y_BITS) && (sensor_bits & FORK_Y_BITS) == 0) {
         // update y position only when sensor value is 0
         axis_y_update();
     }
     if (changes & FORK_P_BITS) {
         // paper detection change
-        axis_paper_detect((PINC & FORK_P_BITS) == 0);
+        axis_paper_detect((sensor_bits & FORK_P_BITS) == 0);
     }
     if (changes & FORK_H_BITS) {
-        axis_head_max_detect((PINC & FORK_H_BITS) == 0);
+        axis_head_max_detect((sensor_bits & FORK_H_BITS) == 0);
     }
-    sensor_bits = SENSOR_BITS;
+    sei();
 }
 
 void axis_status() {
-	Serial.print("sensors="); Serial.println(sensor_bits, BIN);
+	Serial.print("sensors="); Serial.print(SENSOR_BITS, BIN); Serial.print('/'); Serial.println(sensor_bits, BIN);
 	Serial << "X : speed=" << X_speed
+           << "\tdir="     << X_dir
            << "\tpos="     << X_pos
-           << "\tmax  ="   << ((sensor_bits & FORK_H_BITS) ? "no" : "yes")
+           << "\tmax="     << (head_max ? "yes" : "no")
            << EOL;
 	Serial << "Y : speed=" << Y_speed
+           << "\tdir="     << Y_dir
            << "\tpos="     << Y_pos
-           << "\tpaper="   << ((sensor_bits & FORK_P_BITS) ? "yes" : "no")
+           << "\tpaper="   << (paper_present ? "yes" : "no")
            << EOL;
     return 0;
 }

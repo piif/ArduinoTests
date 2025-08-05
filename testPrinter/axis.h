@@ -3,15 +3,28 @@
 #define M_X_EN 11 // white
 #define M_X_A   9 // blue
 #define M_X_B  10 // gray
-#define M_X_SPEED 60
-#define X_MAX 5974
+
+// minimal PWN for X axis
+#define M_X_SPEED 40
+// Position when head touch "end of carriage" sensor
+#define X_MAX 5950
+
+// X position of paper sensor relative to pen position (center of head) (to be verified once pen is positioned)
+// this means that when paper sensor see left border of paper, we have to move of X_PAPER_SENSOR_DELTA to set pen on this border
+#define X_PAPER_SENSOR_DELTA -1100
+
+// Position of left and right A4 paper border
+#define X_PAPER_LEFT   800
+#define X_PAPER_RIGHT 5800
 
 #define M_Y_EN  3 // orange
 #define M_Y_A   6 // green
 #define M_Y_B   5 // yellow
+
+// minimal PWN for X axis
 #define M_Y_SPEED 60
-#define Y_MAX 100000
-#define Y_MARGIN 8000 // distance between paper entry and pen
+// Y position of paper sensor relative to pen position (to be verified once pen is positioned)
+#define Y_PAPER_SENSOR_DELTA 100
 
 #define SENSOR_BITS (PINC & 0x3F)
 
@@ -32,6 +45,8 @@
 
 extern volatile byte paper_present;
 extern volatile byte head_max;
+extern volatile long X_pos;
+extern volatile long Y_pos;
 
 void axis_begin();
 

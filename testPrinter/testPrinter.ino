@@ -50,6 +50,59 @@ int init_head() {
 }
 
 void feed_paper() {
+    Serial.println("feed_paper"); axis_status();
+
+    if (!head_max) {
+        axis_x_set_speed(M_X_SPEED);
+        WAIT_FOR(head_max);
+        Serial.println("after 1st move right"); axis_status();
+    }
+    axis_x_set_speed(-M_X_SPEED);
+    WAIT_FOR(X_pos <= X_MAX - 100);
+    axis_stop();
+
+    axis_x_set_speed(M_X_SPEED);
+    WAIT_FOR(head_max);
+
+    // if paper detected, eject it until bottom border
+    if (paper_present) {
+        axis_y_set_speed(-M_Y_SPEED);
+        WAIT_FOR(!paper_present);
+        axis_stop();
+    }
+    // then, feed until it's detected
+    axis_y_set_speed(M_Y_SPEED);
+    WAIT_FOR(paper_present);
+    axis_stop();
+
+    // this is position for bottom of page
+    Y_pos = 0;
+
+    Serial.println("bottom of page"); axis_status();
+
+    // find top border
+    axis_y_set_speed(M_Y_SPEED);
+    WAIT_FOR(!paper_present);
+    axis_stop();
+
+    Serial.println("top of page"); axis_status();
+
+    // go back to bottom
+    axis_y_set_speed(-M_Y_SPEED);
+    WAIT_FOR(Y_pos <= 100);
+    axis_stop();
+    if (!paper_present) {
+        Serial.println("end of paper before bottom of page");
+        return;
+    }
+
+    // look for left border
+    axis_x_set_speed(-M_X_SPEED);
+    WAIT_FOR(!paper_present);
+    axis_stop();
+
+    Serial.println("left of page"); axis_status();
+
     // // if no paper present, abort
     // if (yAxis.sensorState == 1) {
     //     Serial.println("No paper");
@@ -95,7 +148,6 @@ InputItem inputs[] = {
 	{ 'y', 'I', (void *)axis_y_set_speed },
 	{ 'X', 'I', (void *)axis_x_move_of },
 	{ 'Y', 'I', (void *)axis_y_move_of },
-	{ 'h', 'f', (void *)init_head  },
 	{ 'f', 'f', (void *)feed_paper },
 };
 
