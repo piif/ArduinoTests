@@ -12,7 +12,7 @@ volatile int  X_dir = 0;
 
 // current paper position , 0 = bottom of page when paper is detected
 volatile long Y_pos = 0;
-volatile int  Y_speed = 0;
+volatile byte Y_speed = 0;
 volatile int  Y_dir = 0;
 
 volatile byte sensor_bits = 0;
@@ -54,8 +54,9 @@ void axis_begin() {
     pinMode(FORK_X_B, INPUT);
 
     pinMode(FORK_Y_A, INPUT);
+#ifndef ONE_BIT_FORK
     pinMode(FORK_Y_B, INPUT);
-
+#endif
     pinMode(FORK_P, INPUT_PULLUP);
     pinMode(FORK_H, INPUT_PULLUP);
 
@@ -66,7 +67,11 @@ void axis_begin() {
 
     // Listen PCINT 8,9,10,11,12,13 == interrupts on PC0,1,2,3,4,5 == A0,1,2,3,4,5
     PCMSK0 = 0;
+#ifdef ONE_BIT_FORK
+    PCMSK1 = _BV(PCINT8) | _BV(PCINT9) | _BV(PCINT10) | _BV(PCINT12) | _BV(PCINT13);
+#else
     PCMSK1 = _BV(PCINT8) | _BV(PCINT9) | _BV(PCINT10) | _BV(PCINT11) | _BV(PCINT12) | _BV(PCINT13);
+#endif
     PCMSK2 = 0;
     PCICR = _BV(PCIE1); // listen for PCINT[14:8]
 }
@@ -75,6 +80,8 @@ void axis_x_set_speed(int v) {
     if (v == 0) {
         X_speed = 0;
         digitalWrite(M_X_EN, 0);
+        digitalWrite(M_X_A, 0);
+        digitalWrite(M_X_B, 0);
         return;
     }
 
@@ -86,9 +93,9 @@ void axis_x_set_speed(int v) {
         digitalWrite(M_X_A, 1);
         digitalWrite(M_X_B, 0);
 #else
+        digitalWrite(M_X_EN, 1);
         analogWrite(M_X_A, X_speed);
         digitalWrite(M_X_B, 0);
-        digitalWrite(M_X_EN, 1);
 #endif
     } else {
         X_speed = -v;
@@ -98,9 +105,9 @@ void axis_x_set_speed(int v) {
         digitalWrite(M_X_A, 0);
         digitalWrite(M_X_B, 1);
 #else
-        digitalWrite(M_X_A, 0);
-        analogWrite(M_X_B, X_speed);
         digitalWrite(M_X_EN, 1);
+        analogWrite(M_X_A, ~X_speed);
+        digitalWrite(M_X_B, 1);
 #endif
     }
 }
@@ -109,6 +116,8 @@ void axis_y_set_speed(int v) {
     if (v == 0) {
         Y_speed = 0;
         digitalWrite(M_Y_EN, 0);
+        digitalWrite(M_Y_A, 0);
+        digitalWrite(M_Y_B, 0);
         return;
     }
 
@@ -120,9 +129,9 @@ void axis_y_set_speed(int v) {
         digitalWrite(M_Y_A, 1);
         digitalWrite(M_Y_B, 0);
 #else
+        digitalWrite(M_Y_EN, 1);
         analogWrite(M_Y_A, Y_speed);
         digitalWrite(M_Y_B, 0);
-        digitalWrite(M_Y_EN, 1);
 #endif
     } else {
         Y_speed = -v;
@@ -132,9 +141,9 @@ void axis_y_set_speed(int v) {
         digitalWrite(M_Y_A, 0);
         digitalWrite(M_Y_B, 1);
 #else
-        digitalWrite(M_Y_A, 0);
-        analogWrite(M_Y_B, Y_speed);
         digitalWrite(M_Y_EN, 1);
+        analogWrite(M_Y_A, ~Y_speed);
+        digitalWrite(M_Y_B, 1);
 #endif
     }
 }
@@ -152,8 +161,20 @@ void axis_y_move_of(int delta) {
 
 }
 
+// set this define to compute max and average duration of ISR in order to estimate max possible calls/s
+// on Arduino Uno with default frequency (8MHz), ISR take from 5 to 20µs
+// #define COMPUTE_ISR_DURATION
+#ifdef COMPUTE_ISR_DURATION
+volatile unsigned long nb_isr_call = 0;
+volatile unsigned long all_isr_call = 0;
+volatile unsigned long max_isr_call = 0;
+#endif
+
 ISR(PCINT1_vect) {
     cli();
+#ifdef COMPUTE_ISR_DURATION
+    unsigned long tic = micros();
+#endif
     byte new_sensor_bits = SENSOR_BITS;
     byte changes = new_sensor_bits ^ sensor_bits;
     sensor_bits = new_sensor_bits;
@@ -168,11 +189,19 @@ ISR(PCINT1_vect) {
     }
     if (changes & FORK_P_BITS) {
         // paper detection change
-        axis_paper_detect((sensor_bits & FORK_P_BITS) == 0);
+        axis_paper_detect((sensor_bits & FORK_P_BITS) != 0);
     }
     if (changes & FORK_H_BITS) {
         axis_head_max_detect((sensor_bits & FORK_H_BITS) == 0);
     }
+#ifdef COMPUTE_ISR_DURATION
+    unsigned long duration = micros() - tic;
+    nb_isr_call++;
+    all_isr_call += duration;
+    if (duration > max_isr_call) {
+        max_isr_call = duration;
+    }
+#endif
     sei();
 }
 
@@ -188,6 +217,9 @@ void axis_status() {
            << "\tpos="     << Y_pos
            << "\tpaper="   << (paper_present ? "yes" : "no")
            << EOL;
+#ifdef COMPUTE_ISR_DURATION
+	Serial << nb_isr_call << " ISR calls , avg " << (all_isr_call/nb_isr_call) << " µs , max = " << max_isr_call << " µs" << EOL;
+#endif
     return 0;
 }
 

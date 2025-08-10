@@ -8,47 +8,6 @@
 	#define DEFAULT_BAUDRATE 115200
 #endif
 
-int init_head() {
-    // if head already on sensor, leave it
-    if (head_max) {
-        Serial << "init_head already ok";
-    }
-
-    // // move to left until head touch sensor
-    // Serial.println("WAIT_FOR(head sensor == 1)");
-    // axis_x_set_speed(M_X_SPEED);
-    // if (WAIT_FOR(xAxis.sensorState == 1)) {
-    //     return 1;
-    // }
-    // xAxis.stop();
-    // Serial << "<- ok " << xAxis.position << EOL;
-    // xAxis.position = 0;
-
-    // Serial.println("WAIT_FOR(xAxis.position >= X_MAX)");
-    // xAxis.setHighSpeed(1);
-    // if (WAIT_FOR(xAxis.position >= xAxis.positionMax)) {
-    //     return 1;
-    // }
-    // xAxis.stop();
-    // Serial << "==> ok " << xAxis.position << EOL;
-
-    // Serial.println("WAIT_FOR(xAxis.position <= 0 || xAxis.sensorState == 1)");
-    // xAxis.setHighSpeed(-1);
-    // if (WAIT_FOR(xAxis.position <= 500 || xAxis.sensorState == 1)) {
-    //     return 1;
-    // }
-    // xAxis.setLowSpeed(-1);
-    // if (WAIT_FOR(xAxis.position <= 0 || xAxis.sensorState == 1)) {
-    //     return 1;
-    // }
-    // xAxis.stop();
-    // Serial << "<== ok " << xAxis.position << EOL;
-
-    // // if xAxis.sensorState == 1 while X far from 0, it's a problem
-    // status();
-    return 1;
-}
-
 void feed_paper() {
     Serial.println("feed_paper"); axis_status();
 
@@ -87,57 +46,44 @@ void feed_paper() {
 
     Serial.println("top of page"); axis_status();
 
-    // go back to bottom
+    // go back a few (~ 1cm)
+    long bottom_margin = Y_pos - 1000;
     axis_y_set_speed(-M_Y_SPEED);
-    WAIT_FOR(Y_pos <= 100);
+    WAIT_FOR(Y_pos <= bottom_margin);
     axis_stop();
     if (!paper_present) {
-        Serial.println("end of paper before bottom of page");
+        Serial.println("end of paper before bottom margin of page ?!?");
         return;
     }
 
+#ifdef CAN_DETECT_LEFT_BORDER
     // look for left border
     axis_x_set_speed(-M_X_SPEED);
     WAIT_FOR(!paper_present);
     axis_stop();
 
     Serial.println("left of page"); axis_status();
+#endif // CAN_DETECT_LEFT_BORDER
 
-    // // if no paper present, abort
-    // if (yAxis.sensorState == 1) {
-    //     Serial.println("No paper");
-    //     return 1;
+    // go back to bottom
+    axis_y_set_speed(-M_Y_SPEED);
+    WAIT_FOR(!paper_present);
+    axis_stop();
+    // if (!paper_present) {
+    //     Serial.println("end of paper before top of page");
+    //     return;
     // }
+}
 
-    // // feed paper until yAxis.sensorState == 1 (end of sheet)
-    // yAxis.position=0;
-    // Serial.println("WAIT_FOR(yAxis.sensorState == 1)");
-    // yAxis.setHighSpeed(1);
-    // if (WAIT_FOR(yAxis.sensorState == 1 || yAxis.position >= yAxis.positionMax)) {
-    //     return 1;
-    // }
-    // Serial.println("ok");
+// desired speed , set thru serial input thus not "volatile"
+long vx = 0, vy = 0;
 
-    // if (yAxis.position >= yAxis.positionMax) {
-    //     yAxis.stop();
-    //     Serial.println("can't find end of paper ?");
-    //     return 1;
-    // }
+void set_speed_x(int v) {
 
-    // // move paper back until page bottom
-    // Serial.println("yAxis.position <= Y_MARGIN");
-    // yAxis.setHighSpeed(-1);
-    // if (WAIT_FOR(yAxis.position <= Y_MARGIN)) { // todo : or yAxis.sensorState==1 , but needs to rollback until 0 before
-    //     return 1;
-    // }
-    // yAxis.stop();
-    // Serial.println("ok");
+}
 
-    // status();
-
-    // // consider this as new 0
-    // yAxis.position=0;
-    return 1;
+void set_speed_y(int v) {
+    
 }
 
 InputItem inputs[] = {
@@ -146,10 +92,41 @@ InputItem inputs[] = {
 	{ '?', 'f', (void *)status },
 	{ 'x', 'I', (void *)axis_x_set_speed },
 	{ 'y', 'I', (void *)axis_y_set_speed },
-	{ 'X', 'I', (void *)axis_x_move_of },
-	{ 'Y', 'I', (void *)axis_y_move_of },
+	{ 'X', 'I', (void *)set_speed_x },
+	{ 'Y', 'I', (void *)set_speed_y },
+	// { 'X', 'I', (void *)axis_x_move_of },
+	// { 'Y', 'I', (void *)axis_y_move_of },
 	{ 'f', 'f', (void *)feed_paper },
 };
+
+volatile unsigned long my_clock = 0;
+#ifdef COMPUTE_ISR_DURATION
+volatile unsigned long nb_isr_call = 0;
+volatile unsigned long all_isr_call = 0;
+volatile unsigned long max_isr_call = 0;
+#endif
+
+ISR(TIMER0_COMPA_vect) {
+    cli();
+#ifdef COMPUTE_ISR_DURATION
+    unsigned long tic = micros();
+#endif
+
+    my_clock++;
+    if (my_clock == 200) { // adjust motors 5 times per second
+
+    }
+
+#ifdef COMPUTE_ISR_DURATION
+    unsigned long duration = micros() - tic;
+    nb_isr_call++;
+    all_isr_call += duration;
+    if (duration > max_isr_call) {
+        max_isr_call = duration;
+    }
+#endif
+    sei();
+}
 
 void setup() {
 	Serial.begin(DEFAULT_BAUDRATE);
@@ -160,6 +137,21 @@ void setup() {
 
 	registerInput(sizeof(inputs), inputs);
 	Serial.println("setup ok");
+
+    // timer 1 clock prescaler defaults to 011 = /64 , set to 001 = /1
+    // /64 implies a frequency of 60Hz which is noisy , /8 = 4000Hz still audible, /1 = 32KHz inaubible.
+    TCCR1B &= ~(1 << CS11);
+
+    // timer 0 clock prescaler defaults to /64 and TOIE interrupt is used to update millis counter
+    // we can set TIMSK0 bit OCIE0A and set OCR0A :
+    // - to 125 to call OCIE0A every millisecond
+    // - to  25 to call it  5 times per millisecond (every 200µs)
+    OCR0A = 125;
+    TIMSK0 |= (1 << OCIE0A);
+
+    // Serial.println("TCCR0A "); Serial.println(TCCR0A, HEX);
+    // Serial.println("TCCR0B "); Serial.println(TCCR0B, HEX);
+    // Serial.println("TIMSK0 "); Serial.println(TIMSK0, HEX);
     status();
 }
 
@@ -167,7 +159,20 @@ void status() {
     axis_status();
 }
 
+long px, py;
+unsigned long now = millis();
+
 void loop() {
-    sleep_mode();
+    long dx = X_pos - px; px = X_pos;
+    long dy = Y_pos - py; py = Y_pos;
+    unsigned long dt = millis() - now; now = millis();
+    float vx = X_dir * dx * 1000 / dt;
+    float vy = Y_dir * dy * 1000 / dt;
+    Serial.print("VX = "); Serial.print(vx); Serial.print("\tVY = "); Serial.println(vy);
+#ifdef COMPUTE_ISR_DURATION
+	Serial << nb_isr_call << " ISR calls , avg " << (all_isr_call/nb_isr_call) << " µs , max = " << max_isr_call << " µs" << EOL;
+#endif
+    delay(500);
+    // sleep_mode();
 	handleInput();
 }
