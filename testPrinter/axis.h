@@ -45,13 +45,15 @@
 // Y position of paper sensor relative to pen position (to be verified once pen is positioned)
 #define Y_PAPER_SENSOR_DELTA 100
 
-#define SENSOR_BITS (PINC & 0x3F)
+#define SENSOR_BITS (PINC & (FORK_X_BITS | FORK_Y_BITS | FORK_P_BITS | FORK_H_BITS))
 
 #define FORK_X_A A0
 #define FORK_X_B A1
 #define FORK_X_BITS 0x03
+#define FORK_X_BIT_SHIFT 0
 
-#define ONE_BIT_FORK
+// compute Y position only thru raising edge of 1 data bit on Y fork, to avoid to many interrupt calls
+// #define ONE_BIT_FORK
 
 #ifdef ONE_BIT_FORK
 #define FORK_Y_A A2
@@ -60,13 +62,16 @@
 #define FORK_Y_A A2
 #define FORK_Y_B A3
 #define FORK_Y_BITS 0x0C
+#define FORK_Y_BIT_SHIFT 2
 #endif
 
 #define FORK_P A4 // green , 1 means paper is present , 0 = no paper
 #define FORK_P_BITS 0x10
+// if sensor is on head, it's possible to detect left border of paper
+// if it's on base, we can't
 // #define CAN_DETECT_LEFT_BORDER
 
-#define FORK_H A5 // 1 means head is at left end
+#define FORK_H A5 // 0 means head is at right end
 #define FORK_H_BITS 0x20
 
 #define PAPER_LED 13

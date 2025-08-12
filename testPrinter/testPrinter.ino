@@ -82,14 +82,96 @@ void set_speed_x(int v) {
 
 }
 
-void set_speed_y(int v) {
-    
+void set_speed_y(int t) {
+
+}
+
+void test_break(int v) {
+    // // check Y inertia
+    // Y_pos = 0;
+    // axis_y_set_speed(M_Y_SPEED);
+    // WAIT_FOR(Y_pos >= 3000);
+    // int before = Y_pos;
+    // axis_stop();
+    // int after = Y_pos;
+    // Serial.print("pos before break"); Serial.println(before);
+    // Serial.print("pos after break"); Serial.println(after);
+    // delay(1000);
+    // Serial.print("pos after 1s"); Serial.println(Y_pos);
+
+    // // check X inertia
+    // X_pos = 0;
+    // axis_x_set_speed(M_X_SPEED);
+    // WAIT_FOR(X_pos >= 1500);
+    // int before = X_pos;
+    // axis_stop();
+    // int after = X_pos;
+    // Serial.print("pos before break "); Serial.println(before);
+    // Serial.print("pos after break "); Serial.println(after);
+    // delay(1000);
+    // Serial.print("pos after 1s "); Serial.println(X_pos);
+
+    // // check micro move X
+    // X_pos = 0;
+    // axis_x_set_speed(M_X_SPEED);
+    // delay(v);
+    // int before = X_pos;
+    // axis_x_set_speed(0);
+    // delay(1000);
+    // int after = X_pos;
+    // Serial.print("pos before move "); Serial.println(before);
+    // Serial.print("pos after move "); Serial.println(after);
+
+    // // check micro move Y
+    // Y_pos = 0;
+    // axis_y_set_speed(M_Y_SPEED);
+    // delay(v);
+    // int before = Y_pos;
+    // axis_y_set_speed(0);
+    // delay(1000);
+    // int after = Y_pos;
+    // Serial.print("pos before move "); Serial.println(before);
+    // Serial.print("pos after move "); Serial.println(after);
+
+    // check move X with break => b8 or b9 OK ?
+    X_pos = 0;
+    axis_x_set_speed(-M_X_SPEED);
+    WAIT_FOR(X_pos <= -100);
+    int before = X_pos;
+    X_pos = 0;
+    axis_x_set_speed(255);
+    delay(v);
+    axis_x_set_speed(0);
+    int after = X_pos;
+    X_pos = 0;
+    Serial.print("pos before break "); Serial.println(before);
+    Serial.print("pos after break "); Serial.println(after);
+    delay(1000);
+    Serial.print("pos after 1s "); Serial.println(X_pos);
+
+    // // check move Y with break
+    // Y_pos = 0;
+    // axis_y_set_speed(M_Y_SPEED);
+    // WAIT_FOR(Y_pos >= 3000);
+    // int before = Y_pos;
+    // Y_pos = 0;
+    // axis_y_set_speed(-255);
+    // delay(v);
+    // axis_y_set_speed(0);
+    // int after = Y_pos;
+    // Y_pos = 0;
+    // Serial.print("pos before break "); Serial.println(before);
+    // Serial.print("pos after break "); Serial.println(after);
+    // delay(1000);
+    // Serial.print("pos after 1s "); Serial.println(Y_pos);
+
 }
 
 InputItem inputs[] = {
 	{ '0', 'f', (void *)axis_stop },
 	{ 's', 'f', (void *)axis_stop },
 	{ '?', 'f', (void *)status },
+	{ 'b', 'I', (void *)test_break },
 	{ 'x', 'I', (void *)axis_x_set_speed },
 	{ 'y', 'I', (void *)axis_y_set_speed },
 	{ 'X', 'I', (void *)set_speed_x },
@@ -100,6 +182,7 @@ InputItem inputs[] = {
 };
 
 volatile unsigned long my_clock = 0;
+
 #ifdef COMPUTE_ISR_DURATION
 volatile unsigned long nb_isr_call = 0;
 volatile unsigned long all_isr_call = 0;
@@ -163,16 +246,16 @@ long px, py;
 unsigned long now = millis();
 
 void loop() {
-    long dx = X_pos - px; px = X_pos;
-    long dy = Y_pos - py; py = Y_pos;
-    unsigned long dt = millis() - now; now = millis();
-    float vx = X_dir * dx * 1000 / dt;
-    float vy = Y_dir * dy * 1000 / dt;
-    Serial.print("VX = "); Serial.print(vx); Serial.print("\tVY = "); Serial.println(vy);
-#ifdef COMPUTE_ISR_DURATION
-	Serial << nb_isr_call << " ISR calls , avg " << (all_isr_call/nb_isr_call) << " µs , max = " << max_isr_call << " µs" << EOL;
-#endif
-    delay(500);
-    // sleep_mode();
+//     long dx = X_pos - px; px = X_pos;
+//     long dy = Y_pos - py; py = Y_pos;
+//     unsigned long dt = millis() - now; now = millis();
+//     float vx = X_dir * dx * 1000 / dt;
+//     float vy = Y_dir * dy * 1000 / dt;
+//     Serial.print("VX = "); Serial.print(vx); Serial.print("\tVY = "); Serial.println(vy);
+// #ifdef COMPUTE_ISR_DURATION
+// 	Serial << nb_isr_call << " ISR calls , avg " << (all_isr_call/nb_isr_call) << " µs , max = " << max_isr_call << " µs" << EOL;
+// #endif
+//     delay(500);
+    sleep_mode();
 	handleInput();
 }

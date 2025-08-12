@@ -4,6 +4,7 @@
 
 // current head position , 0 = left of carriage but may be different when initialisation is not still completed
 volatile long X_pos = 0;
+volatile long X_pos_err = 0;
 // speed = PWM level , 0 = stop
 volatile byte X_speed = 0;
 // dir = +1 (right) or -1 (left)
@@ -12,6 +13,7 @@ volatile int  X_dir = 0;
 
 // current paper position , 0 = bottom of page when paper is detected
 volatile long Y_pos = 0;
+volatile long Y_pos_err = 0;
 volatile byte Y_speed = 0;
 volatile int  Y_dir = 0;
 
@@ -20,12 +22,52 @@ volatile byte sensor_bits = 0;
 volatile byte paper_present = 0;
 volatile byte head_max = 0;
 
+volatile byte sensor_X = 0;
+volatile byte sensor_Y = 0;
+
 inline void axis_x_update() {
-    X_pos += X_dir;
+    sensor_X = ( (sensor_X & FORK_X_BITS) << 2 ) | (sensor_bits & FORK_X_BITS);
+    switch (sensor_X) {
+        case 0b0001 << FORK_X_BIT_SHIFT:
+        case 0b0111 << FORK_X_BIT_SHIFT:
+        case 0b1110 << FORK_X_BIT_SHIFT:
+        case 0b1000 << FORK_X_BIT_SHIFT:
+            X_pos++;
+            break;
+        case 0b0100 << FORK_X_BIT_SHIFT:
+        case 0b1101 << FORK_X_BIT_SHIFT:
+        case 0b1011 << FORK_X_BIT_SHIFT:
+        case 0b0010 << FORK_X_BIT_SHIFT:
+            X_pos--;
+            break;
+        default:
+            X_pos_err++;
+    }
+    // X_pos += X_dir;
 }
 
 inline void axis_y_update() {
+#ifdef ONE_BIT_FORK
     Y_pos += Y_dir;
+#else
+    sensor_Y = ( (sensor_Y & FORK_Y_BITS) << 2 ) | (sensor_bits & FORK_Y_BITS);
+    switch (sensor_Y) {
+        case 0b0001 << FORK_Y_BIT_SHIFT:
+        case 0b0111 << FORK_Y_BIT_SHIFT:
+        case 0b1110 << FORK_Y_BIT_SHIFT:
+        case 0b1000 << FORK_Y_BIT_SHIFT:
+            Y_pos++;
+            break;
+        case 0b0100 << FORK_Y_BIT_SHIFT:
+        case 0b1101 << FORK_Y_BIT_SHIFT:
+        case 0b1011 << FORK_Y_BIT_SHIFT:
+        case 0b0010 << FORK_Y_BIT_SHIFT:
+            Y_pos--;
+            break;
+        default:
+            Y_pos_err++;
+    }
+#endif
 }
 
 void axis_paper_detect(byte state) {
@@ -183,7 +225,11 @@ ISR(PCINT1_vect) {
         // update x position on any sensor change
         axis_x_update();
     }
+#ifdef ONE_BIT_FORK
     if ((changes & FORK_Y_BITS) && (sensor_bits & FORK_Y_BITS) == 0) {
+#else
+    if (changes & FORK_Y_BITS) {
+#endif
         // update y position only when sensor value is 0
         axis_y_update();
     }
@@ -206,15 +252,17 @@ ISR(PCINT1_vect) {
 }
 
 void axis_status() {
-	Serial.print("sensors="); Serial.print(SENSOR_BITS, BIN); Serial.print('/'); Serial.println(sensor_bits, BIN);
+	Serial.print("sensors="); Serial.print(sensor_bits, BIN);
+    Serial.print('/'); Serial.println(sensor_X, BIN);
+    Serial.print('/'); Serial.println(sensor_Y, BIN);
 	Serial << "X : speed=" << X_speed
            << "\tdir="     << X_dir
-           << "\tpos="     << X_pos
+           << "\tpos="     << X_pos << "\terr=" << X_pos_err
            << "\tmax="     << (head_max ? "yes" : "no")
            << EOL;
 	Serial << "Y : speed=" << Y_speed
            << "\tdir="     << Y_dir
-           << "\tpos="     << Y_pos
+           << "\tpos="     << Y_pos << "\terr=" << Y_pos_err
            << "\tpaper="   << (paper_present ? "yes" : "no")
            << EOL;
 #ifdef COMPUTE_ISR_DURATION
@@ -222,69 +270,3 @@ void axis_status() {
 #endif
     return 0;
 }
-
-/*
-#define USE_LOW_HIGH_SPEED
-
-void Axis::moveOf(int delta) {
-    long target = position + delta;
-    if (delta == 0 || target > positionMax || target < positionMin) {
-        Serial.print(target); Serial.println(" none or out of range");
-        return;
-    }
-#ifdef USE_LOW_HIGH_SPEED
-    if (delta > 200 || delta < -200) {
-        long preTarget = position + (delta * .8);
-        Serial << "going from " << position << EOL;
-        Serial << " to " << preTarget << EOL;
-        Serial << " then  " << target << EOL;
-        if (delta > 0) {
-            setHighSpeed(1);
-            if(WAIT_FOR(position >= preTarget)) {
-                return;
-            }
-        } else {
-            setHighSpeed(-1);
-            if (WAIT_FOR(position <= preTarget)) {
-                return;
-            }
-        }
-    } else {
-        Serial << "going from " << position << EOL;
-        Serial << " to " << target << EOL;
-    }
-
-    if (delta > 0) {
-        setLowSpeed(1);
-        if (WAIT_FOR(position >= target)) {
-            return;
-        }
-        stop();
-    } else {
-        setLowSpeed(-1);
-        if (WAIT_FOR(position <= target)) {
-            return;
-        }
-        stop();
-    }
-#else
-    if (delta > 0) {
-        setHighSpeed(1);
-        if (WAIT_FOR(position >= target)) {
-            return;
-        }
-        setHighSpeed(-1);
-        delay(20);
-        stop();
-    } else {
-        setHighSpeed(-1);
-        if (WAIT_FOR(position <= target)) {
-            return;
-        }
-        setHighSpeed(1);
-        delay(20);
-        stop();
-    }
-#endif
-}
-*/
