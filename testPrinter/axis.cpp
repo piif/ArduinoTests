@@ -25,6 +25,8 @@ volatile byte head_max = 0;
 volatile byte sensor_X = 0;
 volatile byte sensor_Y = 0;
 
+extern axis_callback x_callback = NULL, y_callback = NULL;
+
 inline void axis_x_update() {
     sensor_X = ( (sensor_X & FORK_X_BITS) << 2 ) | (sensor_bits & FORK_X_BITS);
     switch (sensor_X) {
@@ -42,6 +44,10 @@ inline void axis_x_update() {
             break;
         default:
             X_pos_err++;
+            return;
+    }
+    if (x_callback) {
+        (*x_callback)();
     }
     // X_pos += X_dir;
 }
@@ -66,6 +72,10 @@ inline void axis_y_update() {
             break;
         default:
             Y_pos_err++;
+            return;
+    }
+    if (y_callback) {
+        (*y_callback)();
     }
 #endif
 }
@@ -102,6 +112,8 @@ void axis_begin() {
     pinMode(FORK_P, INPUT_PULLUP);
     pinMode(FORK_H, INPUT_PULLUP);
 
+    delay(2);
+
     // initialize sensors status
     sensor_bits = SENSOR_BITS;
     axis_paper_detect((sensor_bits & FORK_P_BITS) == 0);
@@ -118,7 +130,13 @@ void axis_begin() {
     PCICR = _BV(PCIE1); // listen for PCINT[14:8]
 }
 
+void axis_x_set_speed(int v, short dir) {
+    X_dir = dir;
+    axis_x_set_speed(v);
+}
+
 void axis_x_set_speed(int v) {
+    X_speed = v;
     if (v == 0) {
         X_speed = 0;
         digitalWrite(M_X_EN, 0);
@@ -127,9 +145,7 @@ void axis_x_set_speed(int v) {
         return;
     }
 
-    if (v > 0) {
-        X_speed = v;
-        X_dir = 1;
+    if (X_dir == 1) {
 #ifdef PWM_ON_ENABLE
         analogWrite(M_X_EN, X_speed);
         digitalWrite(M_X_A, 1);
@@ -140,8 +156,6 @@ void axis_x_set_speed(int v) {
         digitalWrite(M_X_B, 0);
 #endif
     } else {
-        X_speed = -v;
-        X_dir = -1;
 #ifdef PWM_ON_ENABLE
         analogWrite(M_X_EN, X_speed);
         digitalWrite(M_X_A, 0);
@@ -154,18 +168,21 @@ void axis_x_set_speed(int v) {
     }
 }
 
+void axis_y_set_speed(int v, short dir) {
+    Y_dir = dir;
+    axis_y_set_speed(v);
+}
+
 void axis_y_set_speed(int v) {
+    Y_speed = v;
     if (v == 0) {
-        Y_speed = 0;
         digitalWrite(M_Y_EN, 0);
         digitalWrite(M_Y_A, 0);
         digitalWrite(M_Y_B, 0);
         return;
     }
 
-    if (v > 0) {
-        Y_speed = v;
-        Y_dir = 1;
+    if (Y_dir == 1) {
 #ifdef PWM_ON_ENABLE
         analogWrite(M_Y_EN, Y_speed);
         digitalWrite(M_Y_A, 1);
@@ -176,8 +193,6 @@ void axis_y_set_speed(int v) {
         digitalWrite(M_Y_B, 0);
 #endif
     } else {
-        Y_speed = -v;
-        Y_dir = -1;
 #ifdef PWM_ON_ENABLE
         analogWrite(M_Y_EN, Y_speed);
         digitalWrite(M_Y_A, 0);
@@ -205,7 +220,7 @@ void axis_y_move_of(int delta) {
 
 // set this define to compute max and average duration of ISR in order to estimate max possible calls/s
 // on Arduino Uno with default frequency (8MHz), ISR take from 5 to 20µs
-// #define COMPUTE_ISR_DURATION
+#define COMPUTE_ISR_DURATION
 #ifdef COMPUTE_ISR_DURATION
 volatile unsigned long nb_isr_call = 0;
 volatile unsigned long all_isr_call = 0;
@@ -252,21 +267,21 @@ ISR(PCINT1_vect) {
 }
 
 void axis_status() {
-	Serial.print("sensors="); Serial.print(sensor_bits, BIN);
+	Serial.print(F("sensors=")); Serial.print(sensor_bits, BIN);
     Serial.print('/'); Serial.println(sensor_X, BIN);
     Serial.print('/'); Serial.println(sensor_Y, BIN);
-	Serial << "X : speed=" << X_speed
-           << "\tdir="     << X_dir
-           << "\tpos="     << X_pos << "\terr=" << X_pos_err
-           << "\tmax="     << (head_max ? "yes" : "no")
+	Serial << F("X : speed=") << X_speed
+           << F("\tdir=")     << X_dir
+           << F("\tpos=")     << X_pos << F("\terr=") << X_pos_err
+           << F("\tmax=")     << (head_max ? F("yes") : F("no"))
            << EOL;
-	Serial << "Y : speed=" << Y_speed
-           << "\tdir="     << Y_dir
-           << "\tpos="     << Y_pos << "\terr=" << Y_pos_err
-           << "\tpaper="   << (paper_present ? "yes" : "no")
+	Serial << F("Y : speed=") << Y_speed
+           << F("\tdir=")     << Y_dir
+           << F("\tpos=")     << Y_pos << F("\terr=") << Y_pos_err
+           << F("\tpaper=")   << (paper_present ? F("yes") : F("no"))
            << EOL;
 #ifdef COMPUTE_ISR_DURATION
-	Serial << nb_isr_call << " ISR calls , avg " << (all_isr_call/nb_isr_call) << " µs , max = " << max_isr_call << " µs" << EOL;
+	Serial << nb_isr_call << F(" ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
 #endif
     return 0;
 }

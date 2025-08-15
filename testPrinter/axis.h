@@ -8,13 +8,15 @@
 
 // minimal PWN for X axis
 #if VCC == 32
-#define M_X_SPEED 40
+#define M_X_SPEED_START 40
 #endif
 #if VCC == 24
-#define M_X_SPEED 80
+#define M_X_SPEED_START 80
 #endif
 #if VCC == 16
-#define M_X_SPEED 120
+#define M_X_SPEED_START 130
+#define M_X_SPEED_MAX 180
+#define M_X_SPEED_END 120
 #endif
 // Position when head touch "end of carriage" sensor
 #define X_MAX 5950
@@ -25,7 +27,7 @@
 
 // Position of left and right A4 paper border
 #define X_PAPER_LEFT   800
-#define X_PAPER_RIGHT 5800
+#define X_PAPER_RIGHT 5700
 
 #define M_Y_EN  3 // orange
 #define M_Y_A  10 // gray
@@ -78,11 +80,17 @@
 
 extern volatile byte paper_present, head_max;
 extern volatile long X_pos, Y_pos;
-extern volatile int X_dir, Y_dir;
+extern volatile byte X_speed, Y_speed;
+extern volatile int  X_dir, Y_dir;
+
+typedef void (*axis_callback)(void);
+extern axis_callback x_callback, y_callback;
 
 void axis_begin();
 
+void axis_x_set_speed(int v, short dir);
 void axis_x_set_speed(int v);
+void axis_y_set_speed(int v, short dir);
 void axis_y_set_speed(int v);
 void axis_stop();
 
