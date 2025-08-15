@@ -6,7 +6,7 @@
 
 #define VCC 16
 
-// minimal PWN for X axis
+// min/max PWM for X axis
 #if VCC == 32
 #define M_X_SPEED_START 40
 #endif
@@ -14,8 +14,12 @@
 #define M_X_SPEED_START 80
 #endif
 #if VCC == 16
+// limit under which motor can't move
+#define M_X_SPEED_MIN 90
+// limit over which we're out of control :)
+#define M_X_SPEED_MAX 250
+// hints to start/end movements ?
 #define M_X_SPEED_START 130
-#define M_X_SPEED_MAX 180
 #define M_X_SPEED_END 120
 #endif
 // Position when head touch "end of carriage" sensor
@@ -84,7 +88,7 @@ extern volatile byte X_speed, Y_speed;
 extern volatile int  X_dir, Y_dir;
 
 typedef void (*axis_callback)(void);
-extern axis_callback x_callback, y_callback;
+extern axis_callback x_callback, y_callback, paper_callback, head_callback;
 
 void axis_begin();
 
