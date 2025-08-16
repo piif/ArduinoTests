@@ -15,9 +15,9 @@
 #endif
 #if VCC == 16
 // limit under which motor can't move
-#define M_X_SPEED_MIN 90
+#define M_X_SPEED_MIN 60
 // limit over which we're out of control :)
-#define M_X_SPEED_MAX 250
+#define M_X_SPEED_MAX 180
 // hints to start/end movements ?
 #define M_X_SPEED_START 130
 #define M_X_SPEED_END 120

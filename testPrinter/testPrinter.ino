@@ -12,13 +12,16 @@
 
 #define PID_PERIOD 10
 
+#define COMPUTE_ISR_DURATION
+long calls=0, misses=0;
+
 // X position PID parameters
 volatile double xp_input = 0, xp_output = 0, xp_setpoint = -1;
 #define XP_PID_P 1
 #define XP_PID_I 0.0
 #define XP_PID_D 0.0
 double xpp = XP_PID_P, xpi = XP_PID_I, xpd = XP_PID_D;
-PID xp_pid(&xp_input, &xp_output, &xp_setpoint, xpp, xpi, xpd, DIRECT);
+PID xp_pid(&xp_input, &xp_output, &xp_setpoint, xpp, xpi, xpd, P_ON_E, DIRECT);
 
 // X speed PID parameters
 volatile double xs_input = 0, xs_output = 0, xs_setpoint = 0;
@@ -27,7 +30,7 @@ volatile double xs_input = 0, xs_output = 0, xs_setpoint = 0;
 #define XS_PID_I 0.0
 #define XS_PID_D 0.0
 double xsp = XS_PID_P, xsi = XS_PID_I, xsd = XS_PID_D;
-PID xs_pid(&xs_input, &xs_output, &xs_setpoint, xsp, xsi, xsd, DIRECT);
+PID xs_pid(&xs_input, &xs_output, &xs_setpoint, xsp, xsi, xsd, P_ON_E, DIRECT);
 
 // original position during a move
 long xi, yi;
@@ -39,8 +42,9 @@ long xf, yf;
 // long yd, yq1, yq2, yq3, ystep, yiter, yv;
 
 #define BUF_MAX 120
-volatile int  bufp[BUF_MAX], bufas[BUF_MAX], bufts[BUF_MAX];
-volatile int bufw[BUF_MAX];
+volatile int    bufp[BUF_MAX];
+volatile double bufe[BUF_MAX];
+volatile short  bufs[BUF_MAX], bufw[BUF_MAX];
 volatile long i=0;
 volatile short dir;
 
@@ -53,17 +57,27 @@ void move_x_to(int p) {
     xi = x_prev = X_pos; xf = p;
     if (xi < xf) {
         dir = 1;
-        xp_setpoint = xf;
+        // xp_setpoint = xf;
     } else {
         dir = -1;
-        xp_setpoint = xf;
+        // xp_setpoint = xf;
     }
+    xp_setpoint = 0;
     xs_setpoint = xs_output = M_X_SPEED_START-M_X_SPEED_MIN;
     axis_x_set_speed(xs_output+M_X_SPEED_MIN, dir);
+    calls=0; misses=0;
     startMyClock();
 }
 
 void move_y_to(int p) {
+}
+
+void testSpeed(int v) {
+    i = 0;
+    x_prev = X_pos;
+    xs_setpoint = v;
+    calls=0; misses=0;
+    startMyClock();
 }
 
 volatile unsigned long my_clock = 0;
@@ -98,28 +112,40 @@ void startMyClock() {
 
 void my_head_callback() {
     xp_setpoint = -1;
+    xs_setpoint = -1;
+    stopMyClock();
 }
 
 ISR(TIMER0_COMPA_vect) {
     cli();
-#ifdef COMPUTE_ISR_DURATION
-    unsigned long tic = micros();
-#endif
 
     if (my_clock % PID_PERIOD == 0) {
+#ifdef COMPUTE_ISR_DURATION
+        unsigned long tic = micros();
+#endif
         if (xp_setpoint != -1) { // X is moving, compute its PID
             // compute position error : value is <0 if we went beyond the target
-            xp_input = X_pos;
+            // xp_input = X_pos;
+            // xp_input = (double)(xf - X_pos) * (xf - X_pos);
+            xp_input = sqrt(abs(xf - X_pos));
+            // negative value = we are "before" target, positive value = we are "beyond"
+            if (X_pos < xf) {
+                xp_input = -xp_input;
+            }
             // compute actual speed and related error
             double actual_speed = dir * (X_pos - x_prev);
             x_prev = X_pos;
 
-            if (abs(xp_setpoint - xp_input) < 3 && abs(actual_speed) < 3) {
+            if (abs(xf - X_pos /*xp_setpoint - xp_input*/) < 3 && abs(actual_speed) < 3) {
+                stopMyClock();
                 xp_setpoint = -1;
                 axis_x_set_speed(0);
             } else {
                 // deduce target speed
-                xp_pid.Compute();
+                calls++;
+                if (!xp_pid.Compute()) {
+                    misses++;
+                }
                 // xs_setpoint = xp_output;
                 // xs_input = actual_speed;
                 // xs_pid.Compute();
@@ -133,23 +159,37 @@ ISR(TIMER0_COMPA_vect) {
                 }
             }
 
-            bufp[i % BUF_MAX] = xp_input;
-            bufas[i % BUF_MAX]= actual_speed;
-            bufts[i % BUF_MAX]= xp_output;
+            bufp[i % BUF_MAX] = xf - X_pos;
+            bufe[i % BUF_MAX] = xp_input;
+            bufs[i % BUF_MAX] = actual_speed;
             bufw[i % BUF_MAX] = xs_output;
             i++;
         }
-    }
-    my_clock++;
+        if (xs_setpoint != -1) { // testing X speed
+            xs_input = X_pos - x_prev;
+            x_prev = X_pos;
+            calls++;
+            if (!xs_pid.Compute()) {
+                misses++;
+            }
+            axis_x_set_speed(xs_output, 1);
+
+            bufp[i % BUF_MAX] = calls-misses;
+            bufs[i % BUF_MAX] = xs_input;
+            bufw[i % BUF_MAX] = xs_output;
+            i++;
+        }
 
 #ifdef COMPUTE_ISR_DURATION
-    unsigned long duration = micros() - tic;
-    nb_isr_call++;
-    all_isr_call += duration;
-    if (duration > max_isr_call) {
-        max_isr_call = duration;
-    }
+        unsigned long duration = micros() - tic;
+        nb_isr_call++;
+        all_isr_call += duration;
+        if (duration > max_isr_call) {
+            max_isr_call = duration;
+        }
 #endif
+    }
+    my_clock++;
     sei();
 }
 
@@ -335,9 +375,10 @@ void feed_paper() {
 void status() {
     axis_status();
 
-	Serial << F("xp_pid in=")
-        << xp_input << F(" , out=") << xp_output << F(" , set=") << xp_setpoint << F(" / P=")
-        << xp_pid.GetKp() << F(" , I=") << xp_pid.GetKi() << F(" , D=") << xp_pid.GetKd() << EOL;
+	// Serial << F("xp_pid in=")
+    //     << xp_input << F(" , out=") << xp_output << F(" , set=") << xp_setpoint << F(" / P=")
+    //     << xp_pid.GetKp() << F(" , I=") << xp_pid.GetKi() << F(" , D=") << xp_pid.GetKd() << EOL;
+    // Serial << calls << F(" calls including ") << misses << " misses\n";
 	Serial << F("xs_pid in=")
         << xs_input << F(" , out=") << xs_output << F(" , set=") << xs_setpoint << F(" / P=")
         << xs_pid.GetKp() << F(" , I=") << xs_pid.GetKi() << F(" , D=") << xs_pid.GetKd() << EOL;
@@ -347,10 +388,10 @@ void status() {
 #endif
 
     if (i > 0) {
-        Serial << F("i=") << i << F("\npos\ta speed\tt speed\tpwm\n");
+        Serial << F("i=") << i << F("\ni\tspeed\tpwm\n"); // pos\terror\t
         int j = (i < BUF_MAX) ? 0 : (i % BUF_MAX);
         do {
-            Serial << bufp[j] << '\t'<< bufas[j] << '\t'<< bufts[j] << '\t' << bufw[j] << EOL;
+            Serial << bufp[j] << '\t' /*<< bufe[j]<< '\t'*/ << bufs[j] << '\t' << bufw[j] << EOL;
             j = (j+1) % BUF_MAX;
         } while (j != i % BUF_MAX);
     }
@@ -390,6 +431,7 @@ InputItem inputs[] = {
 	{ 'y', 'I', (void *)set_y_speed },
 	{ 'X', 'I', (void *)move_x_to },
 	{ 'Y', 'I', (void *)move_y_to },
+	{ 'v', 'I', (void *)testSpeed },
 	{ 'p', 'I', (void *)setxpp },
 	{ 'i', 'I', (void *)setxpi },
 	{ 'd', 'I', (void *)setxpd },
@@ -409,18 +451,19 @@ void setup() {
     set_sleep_mode(SLEEP_MODE_IDLE);
 
     xp_pid.SetSampleTime(PID_PERIOD);
-    xp_pid.SetMode(AUTOMATIC);
     // xp_pid outputs a target speed in step/ms
-    xp_pid.SetOutputLimits(-100, 100);
+    xp_pid.SetOutputLimits(M_X_SPEED_MIN-M_X_SPEED_MAX, M_X_SPEED_MAX-M_X_SPEED_MIN);
+    xp_pid.SetMode(AUTOMATIC);
 
     xs_pid.SetSampleTime(PID_PERIOD);
-    xs_pid.SetMode(AUTOMATIC);
     // xs_pid outputs a target duty cycle but we now nothing moves under M_X_SPEED_MIN
     // in the other hand, we want to go backward if needed
     // thus, we want to output something in [ -M_X_SPEED_MAX : -M_X_SPEED_MIN ] + [ M_X_SPEED_MIN : M_X_SPEED_MAX ]
     // thus, we "translate" this into [ -|M_X_SPEED_MAX-M_X_SPEED_MIN| : +|M_X_SPEED_MAX-M_X_SPEED_MIN| ] and will convert 
     // after each pid computation
-    xs_pid.SetOutputLimits(M_X_SPEED_MIN-M_X_SPEED_MAX, M_X_SPEED_MAX-M_X_SPEED_MIN);
+    xs_pid.SetOutputLimits(0, 255);
+    // xs_pid.SetOutputLimits(M_X_SPEED_MIN-M_X_SPEED_MAX, M_X_SPEED_MAX-M_X_SPEED_MIN);
+    xs_pid.SetMode(AUTOMATIC);
     initMyClock();
 
     head_callback = my_head_callback;
@@ -436,19 +479,19 @@ long px, py;
 unsigned long now = millis();
 
 void loop() {
-//     if (X_speed != 0 || Y_speed != 0) {
-//         long dx = X_pos - px; px = X_pos;
-//         long dy = Y_pos - py; py = Y_pos;
-//         unsigned long dt = millis() - now; now = millis();
-//         float vx = X_dir * dx * 1000 / dt;
-//         float vy = Y_dir * dy * 1000 / dt;
-//         Serial << F("VX = ") << vx << F("\tVY = ") << vy << EOL;
-// #ifdef COMPUTE_ISR_DURATION
-//         Serial << nb_isr_call << F(" ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
-// #endif
-//         delay(200);
-//     } else {
+    if (X_speed != 0 || Y_speed != 0) {
+        long dx = X_pos - px; px = X_pos;
+        long dy = Y_pos - py; py = Y_pos;
+        unsigned long dt = millis() - now; now = millis();
+        float vx = X_dir * dx * 1000 / dt;
+        float vy = Y_dir * dy * 1000 / dt;
+        Serial << F("VX = ") << vx << F("\tVY = ") << vy << EOL;
+#ifdef COMPUTE_ISR_DURATION
+        Serial << nb_isr_call << F(" Timer calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
+#endif
+        delay(200);
+    } else {
         sleep_mode();
-    // }
+    }
 	handleInput();
 }

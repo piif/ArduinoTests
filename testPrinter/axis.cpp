@@ -228,9 +228,9 @@ void axis_y_move_of(int delta) {
 // on Arduino Uno with default frequency (8MHz), ISR take from 5 to 20µs
 #define COMPUTE_ISR_DURATION
 #ifdef COMPUTE_ISR_DURATION
-volatile unsigned long nb_isr_call = 0;
-volatile unsigned long all_isr_call = 0;
-volatile unsigned long max_isr_call = 0;
+static volatile unsigned long nb_isr_call = 0;
+static volatile unsigned long all_isr_call = 0;
+static volatile unsigned long max_isr_call = 0;
 #endif
 
 ISR(PCINT1_vect) {
