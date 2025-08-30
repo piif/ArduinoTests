@@ -14,8 +14,8 @@
 #define COMPUTE_SPEED 0
 #define COMPUTE_SPEED_STR "0"
 
-#define PID_P 1
-#define PID_I 0
+#define PID_P 2
+#define PID_I 4
 #define PID_D 0
 
 // fork value
@@ -35,7 +35,7 @@ ISR(PCINT1_vect) {
     byte changes = new_sensor ^ sensor;
     sensor = new_sensor;
 
-    if (changes) {
+    if (changes && sensor) {
         position++;
     }
 
@@ -72,6 +72,10 @@ int  buf_in[BUF_MAX];
 byte buf_out[BUF_MAX];
 volatile int buf_index = 0;
 
+volatile long ring[5] =  { 0, };
+volatile int  ring_idx=0;
+volatile long ring_sum=0;
+
 // call by timer0
 ISR(TIMER0_COMPA_vect) {
     cli();
@@ -79,8 +83,14 @@ ISR(TIMER0_COMPA_vect) {
         unsigned long tic = micros();
 
         // update PWM value from actual speed (in step/s)
-        input = (position - prev_position) * 1000 / PID_PERIOD;
+        unsigned long delta = (position - prev_position);
         prev_position = position;
+        ring_sum -= ring[ring_idx];
+        ring_sum += delta;
+        ring[ring_idx] = delta;
+        ring_idx = (ring_idx+1) % 5;
+
+        input = ring_sum / 5;
         if (pid.Compute()) {
             nb_pid_call++;
         }
@@ -152,7 +162,7 @@ void setup() {
 
     pid.SetSampleTime(PID_PERIOD);
     pid.SetOutputLimits(0, 255);
-    setpoint = 20000;
+    setpoint = 100;
     output = 160;
     analogWrite(MOTOR_PIN_A, output);
     delay(100);
