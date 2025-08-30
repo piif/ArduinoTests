@@ -1,160 +1,306 @@
 #include <Arduino.h>
+#include "strop.h"
+
+#include "PID_v1.h"
 
 #include "axis.h"
-#include "strop.h"
 #include "tools.h"
-#include "strop.h"
 
 #ifndef DEFAULT_BAUDRATE
 	#define DEFAULT_BAUDRATE 115200
 #endif
 
-void feed_paper() {
-    Serial << F("feed_paper") << EOL; axis_status();
+#define PID_PERIOD 10
 
-    if (!head_max) {
-        axis_x_set_speed(M_X_SPEED_START, 1);
-        WAIT_FOR(head_max);
-        Serial << F("after 1st move right") << EOL; axis_status();
-    }
-    axis_x_set_speed(M_X_SPEED_START, -1);
-    WAIT_FOR(X_pos <= X_MAX - 100);
-    axis_stop();
+#define COMPUTE_ISR_DURATION
 
-    axis_x_set_speed(M_X_SPEED_START, 1);
-    WAIT_FOR(head_max);
+// X position PID parameters
+volatile double xp_input = 0, xp_output = 0, xp_setpoint = -1;
+#define XP_PID_P 1.0
+#define XP_PID_I 0.0
+#define XP_PID_D 0.0
+double xpp = XP_PID_P, xpi = XP_PID_I, xpd = XP_PID_D;
+// PID xp_pid(&xp_input, &xp_output, &xp_setpoint, xpp, xpi, xpd, P_ON_E, DIRECT);
 
-    // if paper detected, eject it until bottom border
-    if (paper_present) {
-        axis_y_set_speed(M_Y_SPEED, -1);
-        WAIT_FOR(!paper_present);
-        axis_stop();
-    }
-    // then, feed until it's detected
-    axis_y_set_speed(M_Y_SPEED, 1);
-    WAIT_FOR(paper_present);
-    axis_stop();
+long x_prev;
 
-    // this is position for bottom of page
-    Y_pos = 0;
+// X speed PID parameters
+volatile double xs_input = 0, xs_output = 0, xs_setpoint = 0;
+volatile double xs_setpoint_prev = 0;
+// approximation of ratio between pwn duty cycle and speed in step/ms
+#define XS_PID_P 1.0 // 3.0
+#define XS_PID_I 0.5 // 6.0
+#define XS_PID_D 0.0
+double xsp = XS_PID_P, xsi = XS_PID_I, xsd = XS_PID_D;
+PID xs_pid(&xs_input, &xs_output, &xs_setpoint, xsp, xsi, xsd, P_ON_E, DIRECT);
 
-    Serial << F("bottom of page") << EOL; axis_status();
 
-    // find top border
-    axis_y_set_speed(M_Y_SPEED, 1);
-    WAIT_FOR(!paper_present);
-    axis_stop();
+// Y position PID parameters
+volatile double yp_input = 0, yp_output = 0, yp_setpoint = -1;
+#define YP_PID_P 1.0
+#define YP_PID_I 0.0
+#define YP_PID_D 0.0
+double ypp = YP_PID_P, ypi = YP_PID_I, ypd = YP_PID_D;
+// PID yp_pid(&yp_input, &yp_output, &yp_setpoint, xpp, xpi, xpd, P_ON_E, DIRECT);
 
-    Serial << F("top of page") << EOL; axis_status();
+// Y speed PID parameters
+volatile double ys_input = 0, ys_output = 0, ys_setpoint = 0;
+volatile double ys_setpoint_prev = 0;
+// approximation of ratio between pwn duty cycle and speed in step/ms
+#define YS_PID_P 0.1
+#define YS_PID_I 1.0
+#define YS_PID_D 0.0
+double ysp = YS_PID_P, ysi = YS_PID_I, ysd = YS_PID_D;
+PID ys_pid(&ys_input, &ys_output, &ys_setpoint, ysp, ysi, ysd, P_ON_E, DIRECT);
 
-    // go back a few (~ 1cm)
-    long bottom_margin = Y_pos - 1000;
-    axis_y_set_speed(M_Y_SPEED, -1);
-    WAIT_FOR(Y_pos <= bottom_margin);
-    axis_stop();
-    if (!paper_present) {
-        Serial << F("end of paper before bottom margin of page ?!?") << EOL;
-        return;
-    }
+long y_prev;
 
-#ifdef CAN_DETECT_LEFT_BORDER
-    // look for left border
-    axis_x_set_speed(M_X_SPEED_START, -1);
-    WAIT_FOR(!paper_present);
-    axis_stop();
+#define SPEED_RING_LEN 5
+static long xring[SPEED_RING_LEN];
+static int  xring_idx=0;
+static long xring_sum=0;
 
-    Serial << F("left of page") << EOL; axis_status();
-#endif // CAN_DETECT_LEFT_BORDER
+static long yring[SPEED_RING_LEN];
+static int  yring_idx=0;
+static long yring_sum=0;
 
-    // go back to bottom
-    axis_y_set_speed(M_Y_SPEED, -1);
-    WAIT_FOR(!paper_present);
-    axis_stop();
-    // if (!paper_present) {
-    //     Serial << F("end of paper before top of page") << EOL;
-    //     return;
-    // }
-}
-
-// original position during a move
-long xi, yi;
-// desired target position , set thru serial input thus not "volatile"
-long xf, yf;
-// distance to move of , distance to 1st quarter (end of acceleration) and 3rd quarter (start of deceleration), current step
-long xd, xq1, xq2, xq3, xqb, xstep, xiter, xv;
-long yd, yq1, yq2, yq3, ystep, yiter, yv;
-
-#define BUF_MAX 100
-long bufs[BUF_MAX], bufp[BUF_MAX];
-byte bufv[BUF_MAX];
-byte i=0;
-
-void move_x_to_callback() {
-    xiter++;
-    xstep = (xi < xf) ? (X_pos - xi) : (xi - X_pos);
-    if (xstep >= xd) {
-        xv = -1;
-        axis_x_set_speed(0);
-        x_callback = NULL;
-    } else if (xstep >= xqb) {
-        xv = -2;
-        axis_x_set_speed(M_X_SPEED_MAX, (xi < xf) ? -1 : 1);
-    } else if (xstep >= xq3) {
-        xv = M_X_SPEED_END;
-        axis_x_set_speed(xv);        
-    } else if (xstep >= xq2) {
-        xv = M_X_SPEED_MAX - (xstep-xq2) * (M_X_SPEED_MAX-M_X_SPEED_END) / xq1;
-        axis_x_set_speed(xv);        
-    } else if (xstep >= xq1) {
-        xv = M_X_SPEED_MAX;
-        axis_x_set_speed(xv);
-    } else {
-        xv = M_X_SPEED_START + xstep * (M_X_SPEED_MAX-M_X_SPEED_START) / xq1;
-        axis_x_set_speed(xv);
-    }
-    if (i < BUF_MAX) {
-        bufs[i] = xstep;
-        bufp[i] = X_pos;
-        bufv[i] = xv;
-        i++;
-    }
-}
+#define BUF_MAX 120
+volatile int    bufp[BUF_MAX];
+volatile double bufe[BUF_MAX];
+volatile short  bufs[BUF_MAX], bufw[BUF_MAX];
+volatile long bufi=0;
+volatile short dir;
+volatile byte moving;
 
 void move_x_to(int p) {
     if (p == X_pos) {
         return;
     }
 
-    xiter = 0;
-    i = 0;
-    xi = X_pos; xf = p;
-    short dir;
-    if (xi < xf) {
-        dir = 1;
-        xd = xf-xi;
-    } else {
-        dir = -1;
-        xd = xi-xf;
+    bufi = 0;
+    x_prev = X_pos;
+    xring_sum = 0;
+    for(byte i=0; i<SPEED_RING_LEN; i++) {
+        xring[xring_idx] = 0;
     }
-    xq1 = xd / 4;
-    xq2 = xd / 2;
-    xq3 = xd - xq1;
-    xqb = xd - 5;
-    x_callback = move_x_to_callback;
-    Serial << F("move_x_to ") << p << F(" => ")
-        << F(" , xi=") << xi
-        << F(" , xf=") << xf
-        << F(" , xd=") << xd
-        << F(" , dir=") << dir
-        << F(" , xq1=") << xq1
-        << F(" , xq3=") << xq3
-        << EOL;
-    axis_x_set_speed(M_X_SPEED_START, dir);
+    xp_setpoint = p;
+    xs_setpoint = xs_setpoint_prev = xs_output = 0;
+    axis_x_set_speed(0);
+    moving = 1;
+    startMyClock();
 }
 
 void move_y_to(int p) {
-    yi = Y_pos; yf = p;
+    if (p == Y_pos) {
+        return;
+    }
+
+    bufi = 0;
+    y_prev = Y_pos;
+    yring_sum = 0;
+    for(byte i=0; i<SPEED_RING_LEN; i++) {
+        yring[yring_idx] = 0;
+    }
+    yp_setpoint = p;
+    ys_setpoint = ys_setpoint_prev = ys_output = 0;
+    axis_y_set_speed(0);
+    moving = 1;
+    startMyClock();
 }
+
+volatile unsigned long my_clock = 0;
+
+#ifdef COMPUTE_ISR_DURATION
+volatile unsigned long nb_isr_call = 0;
+volatile unsigned long all_isr_call = 0;
+volatile unsigned long max_isr_call = 0;
+#endif
+
+// prepare timer0 to call "Compare Match A" interrupt handler every 1ms 
+void initMyClock() {
+    // timer 1 clock prescaler defaults to 011 = /64 , set to 001 = /1
+    // /64 implies a frequency of 60Hz which is noisy , /8 = 4000Hz still audible, /1 = 32KHz inaubible.
+    TCCR1B &= ~(1 << CS11);
+
+    // timer 0 clock prescaler defaults to /64 and TOIE interrupt is used to update millis counter
+    // we can set TIMSK0 bit OCIE0A and set OCR0A :
+    // - to 125 to call OCIE0A every millisecond
+    // - to  25 to call it  5 times per millisecond (every 200µs)
+    OCR0A = 125;
+}
+// activate interrupt
+void stopMyClock() {
+    TIMSK0 &= ~(1 << OCIE0A);
+}
+// disable interrupt
+void startMyClock() {
+    TIMSK0 |= (1 << OCIE0A);
+    my_clock = 0;
+}
+
+void my_head_callback() {
+    xp_setpoint = -1;
+    xs_setpoint = -1;
+    stopMyClock();
+}
+
+ISR(TIMER0_COMPA_vect) {
+    my_clock++;
+    if (my_clock % PID_PERIOD != 0) {
+        return;
+    }
+
+    cli();
+
+#ifdef COMPUTE_ISR_DURATION
+    unsigned long tic = micros();
+#endif
+
+    if (xp_setpoint != -1) {
+        double err = xp_setpoint - X_pos;
+
+        // get current speed (average on 5 last measures)
+        long actual_speed = X_pos - x_prev;
+        x_prev = X_pos;
+        xring_sum -= xring[xring_idx];
+        xring_sum += actual_speed;
+        xring[xring_idx] = actual_speed;
+        xring_idx = (xring_idx+1) % SPEED_RING_LEN;
+
+        // "end of move" logic
+        if (abs(err) < 5 && abs(xs_setpoint) < 5) {
+            stopMyClock();
+            xp_setpoint = -1;
+            xs_setpoint = -1;
+            axis_x_set_speed(0);
+            // TODO : set moving to 0 only if other axis is not moving (or use 2 flags)
+            moving = 0;
+
+            bufp[bufi % BUF_MAX] = err;
+            bufe[bufi % BUF_MAX] = actual_speed;
+            bufs[bufi % BUF_MAX] = 0;
+            bufw[bufi % BUF_MAX] = 0;
+            bufi++;
+
+            return;
+        }
+
+        xs_input = xring_sum / SPEED_RING_LEN;
+
+        // external loop : position -> target speed
+
+        // position PD (D parameter = -Kd*xs_input)
+        xs_setpoint = xpp * err - xpd * xs_input;
+
+        // Limitation par distance (anticipation freinage)
+        double speed_limit = sqrt(2.0 * M_X_ACCEL_MAX * abs(err));
+        speed_limit = min(speed_limit, M_X_SPEED_MAX);
+        xs_setpoint = constrain(xs_setpoint, -speed_limit, +speed_limit);
+
+        // (option) Slew-rate on speed setpoint
+        xs_setpoint = constrain(xs_setpoint, xs_setpoint_prev - M_X_ACCEL_MAX, xs_setpoint_prev + M_X_ACCEL_MAX);
+        xs_setpoint_prev = xs_setpoint;
+
+        // internal loop : speed -> PWM
+        xs_pid.Compute();
+        // int pwm = constrain(ff_kv * v_sp + ff_ka * a_sp + xs_output, 0, 255);
+        // // a_sp ≈ (v_sp - v_sp_prev)/dt if acceleration feedforward required
+        if (xs_output < 0) {
+            // see in setup function : pwm is constrained in a limited range
+            // which has to be converted here
+            axis_x_set_speed(M_X_PWM_MIN-xs_output, -1);
+        } else  if (ys_output > 0) {
+            axis_x_set_speed(M_X_PWM_MIN+xs_output, 1);
+        } else {
+            axis_x_set_speed(0);
+        }
+
+        bufp[bufi % BUF_MAX] = err;
+        bufe[bufi % BUF_MAX] = actual_speed;
+        bufs[bufi % BUF_MAX] = xs_setpoint;
+        bufw[bufi % BUF_MAX] = xs_output;
+        bufi++;
+    }
+
+    if (yp_setpoint != -1) {
+        double err = yp_setpoint - Y_pos;
+
+        // get current speed (average on 5 last measures)
+        long actual_speed = Y_pos - y_prev;
+        y_prev = Y_pos;
+        yring_sum -= yring[yring_idx];
+        yring_sum += actual_speed;
+        yring[yring_idx] = actual_speed;
+        yring_idx = (yring_idx+1) % SPEED_RING_LEN;
+
+        // "end of move" logic
+        if (abs(err) < 5 && abs(ys_setpoint) < 5) {
+            stopMyClock();
+            yp_setpoint = -1;
+            ys_setpoint = -1;
+            axis_y_set_speed(0);
+            // TODO : set moving to 0 only if other axis is not moving (or use 2 flags)
+            moving = 0;
+
+            bufp[bufi % BUF_MAX] = err;
+            bufe[bufi % BUF_MAX] = actual_speed;
+            bufs[bufi % BUF_MAX] = 0;
+            bufw[bufi % BUF_MAX] = 0;
+            bufi++;
+
+            return;
+        }
+
+        ys_input = yring_sum / SPEED_RING_LEN;
+
+        // external loop : position -> target speed
+
+        // position PD (D parameter = -Kd*ys_input)
+        ys_setpoint = ypp * err - ypd * ys_input;
+
+        // Limitation par distance (anticipation freinage)
+        double speed_limit = sqrt(2.0 * M_Y_ACCEL_MAX * abs(err));
+        speed_limit = min(speed_limit, M_Y_PWM_MAX);
+        ys_setpoint = constrain(ys_setpoint, -speed_limit, +speed_limit);
+
+        // (option) Slew-rate on speed setpoint
+        ys_setpoint = constrain(ys_setpoint, ys_setpoint_prev - M_Y_ACCEL_MAX, ys_setpoint_prev + M_Y_ACCEL_MAX);
+        ys_setpoint_prev = ys_setpoint;
+
+        // internal loop : speed -> PWM
+        ys_pid.Compute();
+        // int pwm = constrain(ff_kv * v_sp + ff_ka * a_sp + ys_output, 0, 255);
+        // // a_sp ≈ (v_sp - v_sp_prev)/dt if acceleration feedforward required
+        if (ys_output < 0) {
+            // see in setup function : pwm is constrained in a limited range
+            // which has to be converted here
+            axis_y_set_speed(M_Y_PWM_MIN-ys_output, -1);
+        } else if (ys_output > 0) {
+            axis_y_set_speed(M_Y_PWM_MIN+ys_output, 1);
+        } else {
+            axis_y_set_speed(0);
+        }
+
+        bufp[bufi % BUF_MAX] = err;
+        bufe[bufi % BUF_MAX] = actual_speed;
+        bufs[bufi % BUF_MAX] = ys_setpoint;
+        bufw[bufi % BUF_MAX] = ys_output;
+        bufi++;
+    }
+
+#ifdef COMPUTE_ISR_DURATION
+    unsigned long duration = micros() - tic;
+    nb_isr_call++;
+    all_isr_call += duration;
+    if (duration > max_isr_call) {
+        max_isr_call = duration;
+    }
+#endif
+
+    sei();
+}
+
+
 
 void set_x_speed(int v) {
     if (v == 0) {
@@ -176,162 +322,179 @@ void set_y_speed(int v) {
     }
 }
 
-void test_break(int v) {
-    // // check Y inertia
-    // Y_pos = 0;
-    // // axis_y_set_speed(250, 1);
-    // // WAIT_FOR(Y_pos >= 3000);
-    // // axis_y_set_speed(180, 1);
-    // // WAIT_FOR(Y_pos >= 5000);
-    // axis_y_set_speed(v, 1);
-    // WAIT_FOR(Y_pos >= 6000);
-    // int before = Y_pos;
-    // axis_stop();
-    // int after = Y_pos;
-    // Serial << F("pos before break") << before << EOL;
-    // Serial << F("pos after break") << after << EOL;
-    // delay(1000);
-    // Serial << F("pos after 1s") << Y_pos << EOL;
+void feed_paper() {
+    Serial << F("feed_paper") << EOL; axis_status();
 
-    // check X inertia
-    unsigned long tac = micros();
-    X_pos = 0;
-    // axis_x_set_speed(180, 1);
-    // WAIT_FOR(X_pos >= 1500);
-    // unsigned long tac = micros();
-    // int before = X_pos;
-    axis_x_set_speed(v, 1);
-    WAIT_FOR(X_pos >= 50);
-    unsigned long toc = micros();
+    if (!head_max) {
+        axis_x_set_speed(M_X_PWM_AVG, 1);
+        WAIT_FOR(head_max);
+        Serial << F("after 1st move right") << EOL; axis_status();
+    }
+    axis_x_set_speed(M_X_PWM_AVG, -1);
+    WAIT_FOR(X_pos <= X_MAX - 100);
     axis_stop();
-    int after = X_pos;
-    // Serial << F("pos before break ") << before << F(" in ") << tac-tic << EOL;
-    Serial << F("pos after break ") << after << F(" in ") << toc-tac << EOL;
-    delay(500);
-    Serial << F("pos after .5s ") << X_pos << EOL;
 
-    // // check micro move X
-    // X_pos = 0;
-    // axis_x_set_speed(M_X_SPEED_START, 1);
-    // delay(v);
-    // int before = X_pos;
-    // axis_x_set_speed(0);
-    // delay(1000);
-    // int after = X_pos;
-    // Serial << F("pos before move ") << before << EOL;
-    // Serial << F("pos after move ") << after << EOL;
+    axis_x_set_speed(M_X_PWM_AVG, 1);
+    WAIT_FOR(head_max);
 
-    // // check micro move Y
-    // Y_pos = 0;
-    // axis_y_set_speed(M_Y_SPEED, 1);
-    // delay(v);
-    // int before = Y_pos;
-    // axis_y_set_speed(0);
-    // delay(1000);
-    // int after = Y_pos;
-    // Serial << F("pos before move ") << before << EOL;
-    // Serial << F("pos after move ") << after << EOL;
+    // if paper detected, eject it until bottom border
+    if (paper_present) {
+        axis_y_set_speed(M_Y_PWM_AVG, -1);
+        WAIT_FOR(!paper_present);
+        axis_stop();
+    }
+    // then, feed until it's detected
+    axis_y_set_speed(M_Y_PWM_AVG, 1);
+    WAIT_FOR(paper_present);
+    axis_stop();
 
-    // // check move X with break => b8 or b9 OK ?
-    // X_pos = 0;
-    // axis_x_set_speed(M_X_SPEED_START, -1);
-    // WAIT_FOR(X_pos <= -100);
-    // int before = X_pos;
-    // X_pos = 0;
-    // axis_x_set_speed(255, 1);
-    // delay(v);
-    // axis_x_set_speed(0);
-    // int after = X_pos;
-    // X_pos = 0;
-    // Serial << F("pos before break ") << before << EOL;
-    // Serial << F("pos after break ") << after << EOL;
-    // delay(1000);
-    // Serial << F("pos after 1s ") << X_pos << EOL;
+    // this is position for bottom of page
+    Y_pos = 0;
 
-    // // check move Y with break
-    // Y_pos = 0;
-    // axis_y_set_speed(M_Y_SPEED, 1);
-    // WAIT_FOR(Y_pos >= 3000);
-    // int before = Y_pos;
-    // Y_pos = 0;
-    // axis_y_set_speed(255, -1);
-    // delay(v);
-    // axis_y_set_speed(0);
-    // int after = Y_pos;
-    // Y_pos = 0;
-    // Serial << F("pos before break ") << before << EOL;
-    // Serial << F("pos after break ") << after << EOL;
-    // delay(1000);
-    // Serial << F("pos after 1s ") << Y_pos << EOL;
+    Serial << F("bottom of page") << EOL; axis_status();
 
+    // find top border
+    axis_y_set_speed(M_Y_PWM_AVG, 1);
+    WAIT_FOR(!paper_present);
+    axis_stop();
+
+    Serial << F("top of page") << EOL; axis_status();
+
+    // go back a few (~ 1cm)
+    long bottom_margin = Y_pos - 1000;
+    axis_y_set_speed(M_Y_PWM_AVG, -1);
+    WAIT_FOR(Y_pos <= bottom_margin);
+    axis_stop();
+    if (!paper_present) {
+        Serial << F("end of paper before bottom margin of page ?!?") << EOL;
+        return;
+    }
+
+#ifdef CAN_DETECT_LEFT_BORDER
+    // look for left border
+    axis_x_set_speed(M_X_PWM_AVG, -1);
+    WAIT_FOR(!paper_present);
+    axis_stop();
+
+    Serial << F("left of page") << EOL; axis_status();
+#endif // CAN_DETECT_LEFT_BORDER
+
+    // go back to bottom
+    axis_y_set_speed(M_Y_PWM_AVG, -1);
+    WAIT_FOR(!paper_present);
+    axis_stop();
+    // if (!paper_present) {
+    //     Serial << F("end of paper before top of page") << EOL;
+    //     return;
+    // }
 }
 
 void status() {
     axis_status();
-    Serial << F("xstep = ") << xstep << F(" , iter = ") << xiter << F(" , v = ") << xv;
-    if (x_callback) { Serial << F(" , X callback set"); }
-    Serial << EOL;
-    Serial << F("ystep = ") << ystep << F(" , iter = ") << yiter << F(" , v = ") << yv;
-    if (y_callback) { Serial << F(" , Y callback set"); }
-    Serial << EOL;
-    Serial << F("bufs");
-    for (int j = 0; j<i; j++) {
-        Serial << ' ' << bufs[j];
+
+    if (!moving) {
+    	Serial << F("NOT ");
     }
-    Serial << F("\nbufp");
-    for (int j = 0; j<i; j++) {
-        Serial << ' ' << bufp[j];
+    Serial << F("MOVING\n");
+	Serial << F("xp_pid in=")
+        << xp_input << F(" , out=") << xp_output << F(" , set=") << xp_setpoint 
+        << F(" / P=") << xpp << F(" , D=") << xpd
+        << EOL;
+	Serial << F("xs_pid in=")
+        << xs_input << F(" , out=") << xs_output << F(" , set=") << xs_setpoint
+        << F(" / P=") << xs_pid.GetKp() << F(" , I=") << xs_pid.GetKi() << F(" , D=") << xs_pid.GetKd() << EOL;
+
+	Serial << F("yp_pid in=")
+        << yp_input << F(" , out=") << yp_output << F(" , set=") << yp_setpoint 
+        << F(" / P=") << ypp << F(" , D=") << ypd
+        << EOL;
+	Serial << F("ys_pid in=")
+        << ys_input << F(" , out=") << ys_output << F(" , set=") << ys_setpoint
+        << F(" / P=") << ys_pid.GetKp() << F(" , I=") << ys_pid.GetKi() << F(" , D=") << ys_pid.GetKd() << EOL;
+
+#ifdef COMPUTE_ISR_DURATION
+        Serial << nb_isr_call << F(" Timer calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
+#endif
+
+    if (bufi > 0) {
+        Serial << F("bufi=") << bufi << F("\ni\tpos\ta speed\tt speed\tpwm\n"); // 
+        int j = (bufi < BUF_MAX) ? 0 : (bufi % BUF_MAX);
+        do {
+            Serial << j << '\t' << bufp[j] << '\t' << bufe[j] << '\t' << bufs[j] << '\t' << bufw[j] << EOL;
+            j = (j+1) % BUF_MAX;
+        } while (j != bufi % BUF_MAX);
     }
-    Serial << F("\nbufv");
-    for (int j = 0; j<i; j++) {
-        Serial << ' ' << bufv[j];
-    }
-    Serial << EOL;
+}
+
+void setxpp(int i) {
+    xpp = 0.001*i;
+    // xp_pid.SetTunings(xpp, xpi, xpd, P_ON_E);
+}
+void setxpi(int i) {
+    xpi = 0.001*i;
+    // xp_pid.SetTunings(xpp, xpi, xpd, P_ON_E);
+}
+void setxpd(int i) {
+    xpd = 0.001*i;
+    // xp_pid.SetTunings(xpp, xpi, xpd, P_ON_E);
+}
+void setxsp(int i) {
+    xsp = 0.001*i;
+    xs_pid.SetTunings(xsp, xsi, xsd, P_ON_E);
+}
+void setxsi(int i) {
+    xsi = 0.001*i;
+    xs_pid.SetTunings(xsp, xsi, xsd, P_ON_E);
+}
+void setxsd(int i) {
+    xsd = 0.001*i;
+    xs_pid.SetTunings(xsp, xsi, xsd, P_ON_E);
+}
+
+
+void setypp(int i) {
+    ypp = 0.001*i;
+    // yp_pid.SetTunings(ypp, ypi, ypd, P_ON_E);
+}
+void setypi(int i) {
+    ypi = 0.001*i;
+    // yp_pid.SetTunings(ypp, ypi, ypd, P_ON_E);
+}
+void setypd(int i) {
+    ypd = 0.001*i;
+    // yp_pid.SetTunings(ypp, ypi, ypd, P_ON_E);
+}
+void setysp(int i) {
+    ysp = 0.001*i;
+    ys_pid.SetTunings(ysp, ysi, ysd, P_ON_E);
+}
+void setysi(int i) {
+    ysi = 0.001*i;
+    ys_pid.SetTunings(ysp, ysi, ysd, P_ON_E);
+}
+void setysd(int i) {
+    ysd = 0.001*i;
+    ys_pid.SetTunings(ysp, ysi, ysd, P_ON_E);
 }
 
 InputItem inputs[] = {
 	{ '0', 'f', (void *)axis_stop },
 	{ 's', 'f', (void *)axis_stop },
 	{ '?', 'f', (void *)status },
-	{ 'b', 'I', (void *)test_break },
 	{ 'x', 'I', (void *)set_x_speed },
 	{ 'y', 'I', (void *)set_y_speed },
 	{ 'X', 'I', (void *)move_x_to },
 	{ 'Y', 'I', (void *)move_y_to },
+	{ 'p', 'I', (void *)setypp },
+	{ 'i', 'I', (void *)setypi },
+	{ 'd', 'I', (void *)setypd },
+	{ 'P', 'I', (void *)setysp },
+	{ 'I', 'I', (void *)setysi },
+	{ 'D', 'I', (void *)setysd },
 	// { 'X', 'I', (void *)axis_x_move_of },
 	// { 'Y', 'I', (void *)axis_y_move_of },
 	{ 'f', 'f', (void *)feed_paper },
 };
-
-volatile unsigned long my_clock = 0;
-
-#ifdef COMPUTE_ISR_DURATION
-volatile unsigned long nb_isr_call = 0;
-volatile unsigned long all_isr_call = 0;
-volatile unsigned long max_isr_call = 0;
-#endif
-
-ISR(TIMER0_COMPA_vect) {
-    cli();
-#ifdef COMPUTE_ISR_DURATION
-    unsigned long tic = micros();
-#endif
-
-    my_clock++;
-    if (my_clock == 200) { // adjust motors 5 times per second
-
-    }
-
-#ifdef COMPUTE_ISR_DURATION
-    unsigned long duration = micros() - tic;
-    nb_isr_call++;
-    all_isr_call += duration;
-    if (duration > max_isr_call) {
-        max_isr_call = duration;
-    }
-#endif
-    sei();
-}
 
 void setup() {
 	Serial.begin(DEFAULT_BAUDRATE);
@@ -340,23 +503,33 @@ void setup() {
 
     set_sleep_mode(SLEEP_MODE_IDLE);
 
+    // xp_pid.SetSampleTime(PID_PERIOD);
+    // // xp_pid outputs a target speed in step/ms
+    // xp_pid.SetOutputLimits(-50, 50);
+    // xp_pid.SetMode(AUTOMATIC);
+
+    xs_pid.SetSampleTime(PID_PERIOD);
+    // xs_pid outputs a target duty cycle but we now nothing moves under M_X_PWM_MIN
+    // in the other hand, we want to go backward if needed
+    // thus, we want to output something in [ -M_X_PWM_MAX : -M_X_PWM_MIN ] + [ M_X_PWM_MIN : M_X_PWM_MAX ]
+    // thus, we "translate" this into [ -|M_X_PWM_MAX-M_X_PWM_MIN| : +|M_X_PWM_MAX-M_X_PWM_MIN| ] and will convert 
+    // after each pid computation
+    // xs_pid.SetOutputLimits(0, 255);
+    xs_pid.SetOutputLimits(M_X_PWM_MIN-M_X_PWM_MAX, M_X_PWM_MAX-M_X_PWM_MIN);
+    xs_pid.SetMode(AUTOMATIC);
+
+    ys_pid.SetSampleTime(PID_PERIOD);
+    ys_pid.SetOutputLimits(M_Y_PWM_MIN-M_Y_PWM_MAX, M_Y_PWM_MAX-M_Y_PWM_MIN);
+    ys_pid.SetMode(AUTOMATIC);
+
+    initMyClock();
+
+    head_callback = my_head_callback;
+
 	registerInput(sizeof(inputs), inputs);
+
 	Serial << F("setup ok") << EOL;
 
-    // timer 1 clock prescaler defaults to 011 = /64 , set to 001 = /1
-    // /64 implies a frequency of 60Hz which is noisy , /8 = 4000Hz still audible, /1 = 32KHz inaubible.
-    TCCR1B &= ~(1 << CS11);
-
-    // timer 0 clock prescaler defaults to /64 and TOIE interrupt is used to update millis counter
-    // we can set TIMSK0 bit OCIE0A and set OCR0A :
-    // - to 125 to call OCIE0A every millisecond
-    // - to  25 to call it  5 times per millisecond (every 200µs)
-    OCR0A = 125;
-    TIMSK0 |= (1 << OCIE0A);
-
-    // Serial << F("TCCR0A ") << EOL; Serial << TCCR0A, HEX << EOL;
-    // Serial << F("TCCR0B ") << EOL; Serial << TCCR0B, HEX << EOL;
-    // Serial << F("TIMSK0 ") << EOL; Serial << TIMSK0, HEX << EOL;
     status();
 }
 
@@ -370,9 +543,9 @@ void loop() {
         unsigned long dt = millis() - now; now = millis();
         float vx = X_dir * dx * 1000 / dt;
         float vy = Y_dir * dy * 1000 / dt;
-        Serial << F("VX = ") << vx << F("\tVY = ") << vy << EOL;
+        Serial << F("VX = ") << X_speed << F(" / ") << vx << F("\tVY = ") << Y_speed << F(" / ") << vy << EOL;
 #ifdef COMPUTE_ISR_DURATION
-        Serial << nb_isr_call << F(" ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
+        Serial << nb_isr_call << F(" Timer calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
 #endif
         delay(200);
     } else {

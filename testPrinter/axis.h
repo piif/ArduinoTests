@@ -6,17 +6,21 @@
 
 #define VCC 16
 
-// minimal PWN for X axis
+// min/max PWM for X axis
 #if VCC == 32
-#define M_X_SPEED_START 40
+    #define M_X_SPEED_START 40
 #endif
 #if VCC == 24
-#define M_X_SPEED_START 80
+    #define M_X_SPEED_START 80
 #endif
 #if VCC == 16
-#define M_X_SPEED_START 130
-#define M_X_SPEED_MAX 180
-#define M_X_SPEED_END 120
+    // limit over which we're out of control :)
+    #define M_X_SPEED_MAX 200 // in steps/10ms
+    #define M_X_ACCEL_MAX 30  // in steps/10ms²
+    // limit under which motor can't move
+    #define M_X_PWM_MIN  90
+    #define M_X_PWM_AVG 130
+    #define M_X_PWM_MAX 200
 #endif
 // Position when head touch "end of carriage" sensor
 #define X_MAX 5950
@@ -35,13 +39,19 @@
 
 // minimal PWN for X axis
 #if VCC == 32
-#define M_Y_SPEED 60
+    #define M_Y_SPEED 60
 #endif
 #if VCC == 24
-#define M_Y_SPEED 80
+    #define M_Y_SPEED 80
 #endif
 #if VCC == 16
-#define M_Y_SPEED 170
+    // limit over which we're out of control :)
+    #define M_Y_SPEED_MAX 440 // in steps/10ms
+    #define M_Y_ACCEL_MAX 50  // in steps/10ms²
+    // limit under which motor can't move
+    #define M_Y_PWM_MIN 160
+    #define M_Y_PWM_AVG 170
+    #define M_Y_PWM_MAX 190
 #endif
 
 // Y position of paper sensor relative to pen position (to be verified once pen is positioned)
@@ -84,7 +94,7 @@ extern volatile byte X_speed, Y_speed;
 extern volatile int  X_dir, Y_dir;
 
 typedef void (*axis_callback)(void);
-extern axis_callback x_callback, y_callback;
+extern axis_callback x_callback, y_callback, paper_callback, head_callback;
 
 void axis_begin();
 

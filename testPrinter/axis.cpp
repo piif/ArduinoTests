@@ -25,7 +25,7 @@ volatile byte head_max = 0;
 volatile byte sensor_X = 0;
 volatile byte sensor_Y = 0;
 
-extern axis_callback x_callback = NULL, y_callback = NULL;
+extern axis_callback x_callback = NULL, y_callback = NULL, paper_callback = NULL, head_callback = NULL;
 
 inline void axis_x_update() {
     sensor_X = ( (sensor_X & FORK_X_BITS) << 2 ) | (sensor_bits & FORK_X_BITS);
@@ -82,6 +82,9 @@ inline void axis_y_update() {
 
 void axis_paper_detect(byte state) {
     paper_present = state;
+    if (paper_callback) {
+        (*paper_callback)();
+    }
 }
 
 void axis_head_max_detect(byte state) {
@@ -90,6 +93,9 @@ void axis_head_max_detect(byte state) {
         // stop X motor, force X to X_MAX
         axis_x_set_speed(0);
         X_pos = X_MAX;
+    }
+    if (head_callback) {
+        (*head_callback)();
     }
 }
 
@@ -222,9 +228,9 @@ void axis_y_move_of(int delta) {
 // on Arduino Uno with default frequency (8MHz), ISR take from 5 to 20µs
 #define COMPUTE_ISR_DURATION
 #ifdef COMPUTE_ISR_DURATION
-volatile unsigned long nb_isr_call = 0;
-volatile unsigned long all_isr_call = 0;
-volatile unsigned long max_isr_call = 0;
+static volatile unsigned long nb_isr_call = 0;
+static volatile unsigned long all_isr_call = 0;
+static volatile unsigned long max_isr_call = 0;
 #endif
 
 ISR(PCINT1_vect) {
@@ -281,7 +287,7 @@ void axis_status() {
            << F("\tpaper=")   << (paper_present ? F("yes") : F("no"))
            << EOL;
 #ifdef COMPUTE_ISR_DURATION
-	Serial << nb_isr_call << F(" ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
+	Serial << nb_isr_call << F(" Axis ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
 #endif
     return 0;
 }
