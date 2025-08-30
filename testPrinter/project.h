@@ -1,0 +1,1 @@
+#define COMPUTE_ISR_DURATION

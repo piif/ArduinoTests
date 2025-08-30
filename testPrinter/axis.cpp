@@ -233,61 +233,61 @@ static volatile unsigned long all_isr_call = 0;
 static volatile unsigned long max_isr_call = 0;
 #endif
 
-ISR(PCINT1_vect) {
-    cli();
-#ifdef COMPUTE_ISR_DURATION
-    unsigned long tic = micros();
-#endif
-    byte new_sensor_bits = SENSOR_BITS;
-    byte changes = new_sensor_bits ^ sensor_bits;
-    sensor_bits = new_sensor_bits;
+// ISR(PCINT1_vect) {
+//     cli();
+// #ifdef COMPUTE_ISR_DURATION
+//     unsigned long tic = micros();
+// #endif
+//     byte new_sensor_bits = SENSOR_BITS;
+//     byte changes = new_sensor_bits ^ sensor_bits;
+//     sensor_bits = new_sensor_bits;
 
-    if (changes & FORK_X_BITS) {
-        // update x position on any sensor change
-        axis_x_update();
-    }
-#ifdef ONE_BIT_FORK
-    if ((changes & FORK_Y_BITS) && (sensor_bits & FORK_Y_BITS) == 0) {
-#else
-    if (changes & FORK_Y_BITS) {
-#endif
-        // update y position only when sensor value is 0
-        axis_y_update();
-    }
-    if (changes & FORK_P_BITS) {
-        // paper detection change
-        axis_paper_detect((sensor_bits & FORK_P_BITS) != 0);
-    }
-    if (changes & FORK_H_BITS) {
-        axis_head_max_detect((sensor_bits & FORK_H_BITS) == 0);
-    }
-#ifdef COMPUTE_ISR_DURATION
-    unsigned long duration = micros() - tic;
-    nb_isr_call++;
-    all_isr_call += duration;
-    if (duration > max_isr_call) {
-        max_isr_call = duration;
-    }
-#endif
-    sei();
-}
+//     if (changes & FORK_X_BITS) {
+//         // update x position on any sensor change
+//         axis_x_update();
+//     }
+// #ifdef ONE_BIT_FORK
+//     if ((changes & FORK_Y_BITS) && (sensor_bits & FORK_Y_BITS) == 0) {
+// #else
+//     if (changes & FORK_Y_BITS) {
+// #endif
+//         // update y position only when sensor value is 0
+//         axis_y_update();
+//     }
+//     if (changes & FORK_P_BITS) {
+//         // paper detection change
+//         axis_paper_detect((sensor_bits & FORK_P_BITS) != 0);
+//     }
+//     if (changes & FORK_H_BITS) {
+//         axis_head_max_detect((sensor_bits & FORK_H_BITS) == 0);
+//     }
+// #ifdef COMPUTE_ISR_DURATION
+//     unsigned long duration = micros() - tic;
+//     nb_isr_call++;
+//     all_isr_call += duration;
+//     if (duration > max_isr_call) {
+//         max_isr_call = duration;
+//     }
+// #endif
+//     sei();
+// }
 
 void axis_status() {
-	Serial.print(F("sensors=")); Serial.print(sensor_bits, BIN);
+    Serial.print(F("sensors=")); Serial.print(sensor_bits, BIN);
     Serial.print('/'); Serial.println(sensor_X, BIN);
     Serial.print('/'); Serial.println(sensor_Y, BIN);
-	Serial << F("X : speed=") << X_speed
+    Serial << F("X : speed=") << X_speed
            << F("\tdir=")     << X_dir
            << F("\tpos=")     << X_pos << F("\terr=") << X_pos_err
            << F("\tmax=")     << (head_max ? F("yes") : F("no"))
            << EOL;
-	Serial << F("Y : speed=") << Y_speed
+    Serial << F("Y : speed=") << Y_speed
            << F("\tdir=")     << Y_dir
            << F("\tpos=")     << Y_pos << F("\terr=") << Y_pos_err
            << F("\tpaper=")   << (paper_present ? F("yes") : F("no"))
            << EOL;
 #ifdef COMPUTE_ISR_DURATION
-	Serial << nb_isr_call << F(" Axis ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
+    Serial << nb_isr_call << F(" Axis ISR calls , avg ") << (all_isr_call/nb_isr_call) << F(" us , max = ") << max_isr_call << F(" us") << EOL;
 #endif
     return 0;
 }

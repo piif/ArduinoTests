@@ -1,6 +1,6 @@
 # FOR UNO
-BOARD := arduino:avr:uno
-PORT := /dev/ttyUSB0
+#BOARD := arduino:avr:uno
+#PORT := /dev/ttyUSB0
 
 # FOR TINY
 #BOARD := attiny:avr:ATtinyX5:cpu=attiny85,clock=internal8
@@ -29,10 +29,19 @@ PORT := /dev/ttyUSB0
 #BOARD := arduino:avr:nano:cpu=atmega328old
 #PORT := /dev/ttyUSB0
 
-BOARD := arduino:avr:fio:cpu=fioisp
-PORT := /dev/ttyACM0
+#BOARD := arduino:avr:fio:cpu=fioisp
+#PORT := /dev/ttyACM0
 
-ARDDUDE_OPTIONS := -l cr -o raw -d
-ARDUINO_CLI_UPLOAD_OPTS=-v
+# FOR REPRAP BOARD connected first on USB port and an Arduino as ISP one secod USB port
+BOARD := MightyCore:avr:644
+ARDUINO_CLI_UPLOAD_OPTS := -P arduinoasisp
+UPLOAD_PORT := /dev/ttyUSB1
+PORT := /dev/ttyUSB0
+LIBRARY_PATH := ~/GitHub/piif/ArduinoLibs ~/GitHub/piif/ArduinoTools ${PROJECT_DIR}
+ARDDUDE_OPTIONS := -l lf -o raw -d -a "arduino-cli upload ${ARDUINO_CLI_UPLOAD_OPTS}"
+
+
+#ARDDUDE_OPTIONS := -l cr -o raw -d
+#ARDUINO_CLI_UPLOAD_OPTS=-v
 #ARDUINO_CLI_COMPILE_OPTS=--warnings all
 ARDUINO_CLI_COMPILE_OPTS=--warnings all --build-property build.extra_flags="-DTEST_SERIAL"

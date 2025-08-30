@@ -29,6 +29,9 @@
 #elif defined(ARDUINO_RASPBERRY_PI_PICO)
 	#define LED LED_BUILTIN
 	#warning "Pico"
+#elif defined(ARDUINO_AVR_ATmega644)
+	#define LED 0
+	#warning "RepRap"
 #else
 	#define LED 13
 	#warning "Arduino"
@@ -42,7 +45,8 @@ void setup(void) {
 #endif
 
 	pinMode(LED, OUTPUT);
-	pinMode(1, OUTPUT);
+	digitalWrite(LED, HIGH);
+	//pinMode(1, OUTPUT);
 
 #ifdef TEST_TIMER
 	// set Clock to 1MHz instead of 8
@@ -88,18 +92,3 @@ void loop() {
 	digitalWrite(LED, LOW);
 #endif
 }
-
-/*
-TODO : revoir la ligne de commande depuis l'IDE Pour "Arduino as ISP"
-et voir comment l'intégrer dans ArdDude
-
-./opt/arduino-1.6.5-r5/hardware/tools/avr/bin/avrdude
-  -C/opt/arduino-1.6.5-r5/hardware/tools/avr/etc/avrdude.conf
-  -v
-  -pattiny85
-  -cstk500v1
-  -P/dev/ttyACM0
-  -b19200
-  -Uflash:w:/tmp/build2267963526209929137.tmp/Blink.cpp.hex:i
-
-*/
