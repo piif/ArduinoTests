@@ -1,0 +1,3 @@
+# FOR UNO
+BOARD := arduino:avr:uno
+PORT := /dev/ttyUSB0

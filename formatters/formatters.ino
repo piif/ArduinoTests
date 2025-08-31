@@ -1,7 +1,19 @@
-#include <iostream>
-#include <iomanip>
+/**
+ * to test on PC : g++ -x c++ formatters.ino -o formatters
+ * to test on arduino, use IDE
+ */
 
-using namespace std;
+#ifdef ARDUINO
+    #include <Arduino.h>
+    #include "strop.h"
+    #define OUTPUT Serial
+#else
+    #include <iostream>
+    #include <iomanip>
+    #define OUTPUT cout
+    using namespace std;
+#endif
+
 
 struct Bin {
     unsigned long long value;
@@ -38,47 +50,63 @@ Bin bin(unsigned long long value, unsigned short len = 0, char pad = ' ') {
 
 #define bitlen(x) ((sizeof(x)<<3) - __builtin_clz(x) )
 
-int main() {
+void tests() {
     unsigned short s = 42;
     unsigned int   i = 42;
     unsigned long  l = 1234;
     unsigned long long ll = 12345678UL;
 
-    cout << "sizeof  s = " << (sizeof( s) * __CHAR_BIT__) << " , clz/len(" << setbase(16) << s <<") = "  << setbase(10) << __builtin_clz( s) << '/' << bitlen( s) << endl;
-    cout << "sizeof  i = " << (sizeof( i) * __CHAR_BIT__) << " , clz/len(" << setbase(16) << i <<") = "  << setbase(10) << __builtin_clz( i) << '/' << bitlen( i) << endl;
-    cout << "sizeof  l = " << (sizeof( l) * __CHAR_BIT__) << " , clz/len(" << setbase(16) << l <<") = "  << setbase(10) << __builtin_clz( l) << '/' << bitlen( l) << endl;
-    cout << "sizeof ll = " << (sizeof(ll) * __CHAR_BIT__) << " , clz/len(" << setbase(16) <<ll <<") = "  << setbase(10) << __builtin_clz(ll) << '/' << bitlen(ll) << endl;
+    OUTPUT << "sizeof  s = " << (sizeof( s) * __CHAR_BIT__) << " , clz/len(" << setbase(16) << s <<") = "  << setbase(10) << __builtin_clz( s) << '/' << bitlen( s) << endl;
+    OUTPUT << "sizeof  i = " << (sizeof( i) * __CHAR_BIT__) << " , clz/len(" << setbase(16) << i <<") = "  << setbase(10) << __builtin_clz( i) << '/' << bitlen( i) << endl;
+    OUTPUT << "sizeof  l = " << (sizeof( l) * __CHAR_BIT__) << " , clz/len(" << setbase(16) << l <<") = "  << setbase(10) << __builtin_clz( l) << '/' << bitlen( l) << endl;
+    OUTPUT << "sizeof ll = " << (sizeof(ll) * __CHAR_BIT__) << " , clz/len(" << setbase(16) <<ll <<") = "  << setbase(10) << __builtin_clz(ll) << '/' << bitlen(ll) << endl;
 
-    cout << "\ns = " << s << " = 0x" << setbase(16) << s << setbase(10)
+    OUTPUT << "\ns = " << s << " = 0x" << setbase(16) << s << setbase(10)
         << " = '0b" << bin(s)
         << "' =(4/' ') '0b" << bin(s, 4)
         << "' =(4/'0') '0b" << bin(s, 4, '0') << "'\n\n";
 
-    cout << "i = " << i << " = 0x" << setbase(16) << i << setbase(10)
+    OUTPUT << "i = " << i << " = 0x" << setbase(16) << i << setbase(10)
         << " = '0b" << bin(i)
         << "' =(8/' ') '0b" << bin(i, 8)
         << "' =(8/'0') '0b" << bin(i, 8, '0') << "'\n\n";
 
     s = 1UL << ((sizeof(s) * __CHAR_BIT__)-1);
-    cout << "s = " << s << " = 0x" << setbase(16) << s << setbase(10)
+    OUTPUT << "s = " << s << " = 0x" << setbase(16) << s << setbase(10)
         << " = '0b" << bin(s) << "'\n\n";
 
     s = 0;
-    cout << "s = " << s << " = 0x" << setbase(16) << s << setbase(10)
+    OUTPUT << "s = " << s << " = 0x" << setbase(16) << s << setbase(10)
         << " = '0b" << bin(s)
         << "' =(4/' ') '0b" << bin(s, 4)
         << "' =(4/'0') '0b" << bin(s, 4, '0') << "'\n\n";
 
-    cout << "ll = " << ll << " = 0x" << setbase(16) << ll << setbase(10)
+    OUTPUT << "ll = " << ll << " = 0x" << setbase(16) << ll << setbase(10)
         << "\n = '0b" << bin(ll)
         << "'\n =(60/' ') '0b" << bin(ll, 60)
         << "'\n =(60/'0') '0b" << bin(ll, 60, '0')
         << "'\n =(32/'0') '0b" << bin(ll, 32, '0') << "\'\n\n";
 
     ll = 1UL << ((sizeof(ll) * __CHAR_BIT__)-1);
-    cout << "ll = " << ll << " = 0x" << setbase(16) << ll << setbase(10)
+    OUTPUT << "ll = " << ll << " = 0x" << setbase(16) << ll << setbase(10)
         << "\n = '0b" << bin(ll)
         << "'\n =(60/'.') '0b" << bin(ll, 60, '.')
         << "'\n =(60/'0') '0b" << bin(ll, 60, '0')
         << "'\n =(32/'0') '0b" << bin(ll, 32, '0') << "\'\n";
 }
+
+#ifdef ARDUINO
+
+void setup() {
+    Serial.begin(115800);
+    tests();
+}
+void loop() {}
+
+#else // ARDUINO
+
+int main() {
+    tests();
+}
+
+#endif // ARDUINO
