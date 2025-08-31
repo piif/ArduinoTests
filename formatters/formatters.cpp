@@ -14,23 +14,15 @@ std::ostream& operator<<(std::ostream& os, Bin b) {
     unsigned long long mask;
     if (b.len != 0) {
         mask = 1UL << (b.len-1);
-    } else if (b.value == 0) {
-        os << '0';
-        return os;
     } else {
         // compute "binary len" of value
-        mask = b.value;
-        mask |= mask >> 1;
-        mask |= mask >> 2;
-        mask |= mask >> 4;
-        mask |= mask >> 8;
-        mask |= mask >> 16;
-        mask |= mask >> 32;
-        mask = mask ^ (mask >> 1);
+        mask = 1UL << ((sizeof(mask) * __CHAR_BIT__)-1);
     }
 
     while (mask > 1 && (mask & b.value) == 0) {
-        os << b.pad;
+        if (b.len != 0) {
+            os << b.pad;
+        }
         mask >>=1;
     }
     while(mask) {
@@ -67,7 +59,7 @@ int main() {
         << "' =(8/' ') '0b" << bin(i, 8)
         << "' =(8/'0') '0b" << bin(i, 8, '0') << "'\n\n";
 
-    s = 128;
+    s = 1UL << ((sizeof(s) * __CHAR_BIT__)-1);
     cout << "s = " << s << " = 0x" << setbase(16) << s << setbase(10)
         << " = '0b" << bin(s) << "'\n\n";
 
@@ -82,7 +74,8 @@ int main() {
         << "'\n =(60/' ') '0b" << bin(ll, 60)
         << "'\n =(60/'0') '0b" << bin(ll, 60, '0')
         << "'\n =(32/'0') '0b" << bin(ll, 32, '0') << "\'\n\n";
-    ll = 1UL << 63;
+
+    ll = 1UL << ((sizeof(ll) * __CHAR_BIT__)-1);
     cout << "ll = " << ll << " = 0x" << setbase(16) << ll << setbase(10)
         << "\n = '0b" << bin(ll)
         << "'\n =(60/'.') '0b" << bin(ll, 60, '.')
