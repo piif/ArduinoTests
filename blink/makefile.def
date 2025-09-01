@@ -1,6 +1,6 @@
 # FOR UNO
-BOARD := arduino:avr:uno
-PORT := /dev/ttyUSB0
+#BOARD := arduino:avr:uno
+#PORT := /dev/ttyUSB0
 
 # FOR TINY
 #BOARD := attiny:avr:ATtinyX5:cpu=attiny85,clock=internal8
@@ -29,8 +29,12 @@ PORT := /dev/ttyUSB0
 #BOARD := arduino:avr:nano:cpu=atmega328old
 #PORT := /dev/ttyUSB0
 
-BOARD := arduino:avr:fio:cpu=fioisp
-PORT := /dev/ttyACM0
+#BOARD := arduino:avr:fio:cpu=fioisp
+#PORT := /dev/ttyACM0
+
+# UNO LGT8Fx
+BOARD := lgt8fx:avr:328
+PORT := /dev/ttyUSB0
 
 ARDDUDE_OPTIONS := -l cr -o raw -d
 ARDUINO_CLI_UPLOAD_OPTS=-v
