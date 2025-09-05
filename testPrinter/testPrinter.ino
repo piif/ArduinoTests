@@ -18,7 +18,7 @@
 #endif
 
 Stepper motorX, motorY;
-Fork forkX, forkY;
+volatile Fork forkX, forkY;
 
 #define PAPER_SENSOR USER_1
 #define PAPER_SENSOR_INTR USER_1_INTR
@@ -28,9 +28,9 @@ Fork forkX, forkY;
 #define HEAD_SENSOR_INTR USER_3_INTR
 #define HEAD_SENSOR_INTR_NUM USER_3_INTR_NUM
 
-#define X_FORK_A USER_4
-#define X_FORK_A_INTR USER_4_INTR
-#define X_FORK_A_INTR_NUM USER_4_INTR_NUM
+#define X_FORK_A X_MIN_PIN
+#define X_FORK_A_INTR X_MIN_INTR
+#define X_FORK_A_INTR_NUM X_MIN_INTR_NUM
 
 #define X_FORK_B USER_0
 #define X_FORK_B_INTR USER_0_INTR
@@ -52,11 +52,15 @@ volatile unsigned long pinChangeMaxIsrCall = 0;
 #endif
 
 void myClockCallback(unsigned long clock) {
-    stepperDoStep(&motorX);
-    stepperDoStep(&motorY);
+    cli();
+    if (stepperDoStep(&motorX) == 0 && stepperDoStep(&motorY) == 0) {
+        stopMyClock();
+    }
+    sei();
 }
 
 void pinChangeCallback() {
+    cli();
 #ifdef COMPUTE_ISR_DURATION
     unsigned long tic = micros();
 #endif
@@ -74,6 +78,7 @@ void pinChangeCallback() {
         pinChangeMaxIsrCall = duration;
     }
 #endif
+    sei();
 }
 
 ISR(PIN_PCINT_vect(PAPER_SENSOR_INTR_NUM)) {
@@ -115,11 +120,19 @@ ISR(PIN_PCINT_vect(Y_FORK_B_INTR_NUM)) {
 }
 #endif
 
+unsigned int speed = 100;
+void setSpeed(int v) {
+    speed = v;
+    startMyClock(speed);
+}
+
 void moveX(int v) {
     stepperMoveOf(&motorX, v);
+    startMyClock(speed);
 }
 void moveY(int v) {
     stepperMoveOf(&motorY, v);
+    startMyClock(speed);
 }
 
 void status() {
@@ -147,6 +160,7 @@ void status() {
 
 InputItem inputs[] = {
     { '?', 'f', (void *)status },
+    { 'v', 'I', (void *)setSpeed },
     { 'x', 'I', (void *)moveX },
     { 'y', 'I', (void *)moveY },
 };
@@ -181,8 +195,7 @@ void setup() {
 
     registerInput(sizeof(inputs), inputs);
 
-    initMyClock(100);
-    startMyClock();
+    initMyClock(speed);
 
     status();
     Serial << F("setup Ok") << EOL;

@@ -30,7 +30,10 @@ void stopMyClock() {
 }
 
 // disable interrupt
-void startMyClock() {
+void startMyClock(unsigned int period = 0) {
+    if (period != 0) {
+        my_clock_period = period;
+    }
     TIMSK0 |= (1 << OCIE0A);
     my_clock = 0;
 }

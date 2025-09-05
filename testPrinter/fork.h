@@ -5,9 +5,9 @@
 
 typedef struct _fork {
     byte pinA, pinB;
-    byte state;
-    long position;
-    long errors;
+    volatile byte state;
+    volatile long position;
+    volatile long errors;
 } Fork;
 
 void forkInit(Fork *f, byte pinA, byte pinB);
@@ -18,5 +18,8 @@ short forkUpdate(Fork *f);
 
 // set new position
 void forkSetPosition(Fork *f, long p);
+
+// read current fork state
+byte forkRead(Fork *f);
 
 #endif // HAVE_FORK_H

@@ -17,7 +17,7 @@ void forkInit(Fork *f, byte pinA, byte pinB) {
 
 short forkUpdate(Fork *f) {
     byte new_state = forkRead(f);
-    if (new_state == f-> state) {
+    if (new_state == f->state) {
         return 0;
     }
     byte state_change = new_state | (f->state << 2);

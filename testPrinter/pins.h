@@ -121,11 +121,22 @@
 #define USER_3_PCICR PCIE1
 #define USER_3_PCINT_vect PCINT1_vect
 
+// pin 24 is always +5V ???
 #define USER_4 24  // PA0
 #define USER_4_INTR  PCINT0
 #define USER_4_INTR_NUM 0
 #define USER_4_PCMSK PCMSK0
 #define USER_4_PCICR PCIE0
 #define USER_4_PCINT_vect PCINT0_vect
+
+#define RJ45_A_0 13 // PD4
+#define RJ45_A_7 14 // PD5
+#define RJ45_B_0 10 // PD2
+#define RJ45_B_7 11 // PD3
+
+// remaining pins :
+// PB5,6,7 = MISO, MOSI, SCK used to upload program
+// PD0,1 = RX, TX for USB port
+// 19 = PC3 and 21 = PC5 seems connected nowhere
 
 #endif // HAVE_PINS_H
